@@ -59,15 +59,34 @@
   }
 
   async function loadSurahs() {
-    $("#surahList").innerHTML = '<div class="loading">Memuat daftar surah...</div>';
+    // Pastikan elemen daftar ada. Elemen ini bisa terhapus ketika detail surah dibuka.
+    if (!$("#surahList")) renderQuranHome();
+
+    const listBeforeRequest = $("#surahList");
+    if (!listBeforeRequest) {
+      console.error("Elemen #surahList tidak ditemukan di dalam #quran.");
+      return;
+    }
+    listBeforeRequest.innerHTML = '<div class="loading">Memuat daftar surah...</div>';
+
     const { data, error } = await client.from("surahs")
       .select("id,name_ar,name_latin,ayah_count,revelation_type")
       .order("id");
+
+    // Cek ulang setelah request selesai, karena halaman mungkin berubah selama menunggu.
+    if (!$("#surahList")) renderQuranHome();
+    const listAfterRequest = $("#surahList");
+    if (!listAfterRequest) {
+      console.error("Elemen #surahList tidak tersedia setelah data selesai dimuat.");
+      return;
+    }
+
     if (error) {
-      $("#surahList").innerHTML =
+      listAfterRequest.innerHTML =
         `<div class="panel loading">Gagal memuat data: ${escapeHtml(error.message)}</div>`;
       return;
     }
+
     window.MQ_SURAHS = data || [];
     renderSurahs(window.MQ_SURAHS);
   }
