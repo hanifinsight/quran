@@ -1,0 +1,17 @@
+{
+  "name": "Murojaah Quest",
+  "short_name": "Murojaah",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f9f7",
+  "theme_color": "#123d32",
+  "description": "Teman perjalanan menjaga hafalan Al-Qur'an.",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
