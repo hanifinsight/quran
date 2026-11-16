@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#174b37">
+  <title>QuranKu — Mushaf</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="QuranKu beranda">
+      <span class="brand-mark">۞</span>
+      <span><strong>QuranKu</strong><small>Mushaf & Hafalan</small></span>
+    </a>
+    <button class="icon-button" id="settingsBtn" aria-label="Pengaturan tampilan" title="Pengaturan">Aa</button>
+  </header>
+
+  <main class="app-shell">
+    <section class="intro">
+      <p class="eyebrow">MUSHAF DIGITAL</p>
+      <h1>Assalamu’alaikum</h1>
+      <p class="muted">Lanjutkan tilawah dan jaga kedekatan dengan Al-Qur’an.</p>
+    </section>
+
+    <section class="continue-card" aria-label="Bacaan terakhir">
+      <div>
+        <span class="eyebrow light">TERAKHIR DIBACA</span>
+        <h2 id="lastReadTitle">Al-Fatihah</h2>
+        <p id="lastReadMeta">Surah 1 · Ayat 1</p>
+      </div>
+      <button class="continue-button" id="continueBtn">Lanjutkan <span>→</span></button>
+    </section>
+
+    <section class="toolbar">
+      <div class="section-heading">
+        <div><p class="eyebrow">JELAJAHI</p><h2>Daftar surah</h2></div>
+        <span class="count">114 Surah</span>
+      </div>
+      <label class="search-box">
+        <span aria-hidden="true">⌕</span>
+        <input id="searchInput" type="search" placeholder="Cari nama surah..." autocomplete="off">
+      </label>
+      <div class="surah-layout">
+        <aside class="surah-panel">
+          <div class="panel-label">PILIH SURAH</div>
+          <div id="surahList" class="surah-list"></div>
+        </aside>
+
+        <article class="reader" id="reader">
+          <div class="reader-top">
+            <div>
+              <p class="eyebrow">SEDANG DIBACA</p>
+              <h2 id="surahTitle">Al-Fatihah</h2>
+              <p class="reader-meta" id="surahMeta">Pembukaan · 7 Ayat</p>
+            </div>
+            <button class="bookmark-top" id="bookmarkSurahBtn" title="Simpan penanda">☆</button>
+          </div>
+          <div class="ornament"><span>۞</span></div>
+          <div class="bismillah" id="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
+          <div id="ayahContainer" class="ayah-container"></div>
+          <div class="reader-footer">
+            <button class="outline-button" id="prevSurahBtn">← Sebelumnya</button>
+            <button class="solid-button" id="nextSurahBtn">Surah berikutnya →</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="prototype-note">
+      <span>ⓘ</span>
+      <p><strong>Versi prototype.</strong> Teks yang tersedia saat ini hanya contoh Surah Al-Fatihah dan beberapa ayat awal Al-Baqarah. Jangan gunakan sebagai pengganti mushaf terverifikasi. Dataset lengkap dan pemeriksaan teks akan ditambahkan pada tahap berikutnya.</p>
+    </section>
+  </main>
+
+  <div class="settings-backdrop" id="settingsBackdrop" hidden>
+    <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="settings-heading"><h2 id="settingsTitle">Pengaturan bacaan</h2><button id="closeSettings" class="icon-button" aria-label="Tutup">×</button></div>
+      <label for="fontSize">Ukuran tulisan Arab <output id="fontSizeValue">32 px</output></label>
+      <input id="fontSize" type="range" min="26" max="48" value="32">
+      <p class="muted small">Pengaturan tersimpan otomatis pada perangkat ini.</p>
+    </section>
+  </div>
+
+  <footer class="footer">QuranKu Prototype <span>•</span> Dibuat untuk membaca dengan nyaman</footer>
+  <script src="app.js"></script>
+</body>
+</html>
