@@ -27,6 +27,7 @@
     if (title) title.textContent = ({dashboard:"Dashboard",quran:"Al-Qur'an",hafalan:"Hafalan Saya",murojaah:"Jadwal Murojaah",games:"Permainan",pencapaian:"Pencapaian"})[id] || "Dashboard";
     $("#sidebar")?.classList.remove("open");
     if (id === "quran" && !$("#surahList")) renderQuranHome();
+    if (id === "games") renderGames();
     if (id === "quran" && client && (!window.MQ_SURAHS || !window.MQ_SURAHS.length)) loadSurahs();
     if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
   }
@@ -172,5 +173,85 @@
   document.addEventListener("input",e=>{if(e.target?.id==="surahSearch")renderSurahs(filterSurahs(e.target.value));});
   document.addEventListener("click",e=>{const b=e.target.closest("[data-surah]");if(b){openSurah(Number(b.dataset.surah));return;}if(e.target.closest("#backSurahs"))renderQuranHome();});
   async function openSurah(id){if(!client)return;const s=(window.MQ_SURAHS||[]).find(x=>x.id===id);if(!s)return;$("#quran").innerHTML=`<button class="secondary-button" id="backSurahs">← Kembali ke daftar surah</button><div class="section-head" style="margin-top:20px"><p class="eyebrow">AL-QUR'AN</p><h1>${escapeHtml(s.name_latin)} <span lang="ar">${escapeHtml(s.name_ar)}</span></h1><p class="muted">${s.ayah_count} ayat · ${escapeHtml(s.revelation_type)}</p></div><div id="ayahContent" class="loading">Memuat ayat...</div>`;const {data,error}=await client.from("ayahs").select("ayah_number,juz_number,text_uthmani").eq("surah_id",id).order("ayah_number");const out=$("#ayahContent");if(!out)return;if(error){out.innerHTML=`<div class="panel loading">Ayat tidak dapat dimuat: ${escapeHtml(error.message)}</div>`;return;}out.innerHTML=(data||[]).map(a=>`<article class="panel" style="margin-bottom:10px"><small class="muted">${escapeHtml(s.name_latin)} · Ayat ${a.ayah_number} · Juz ${a.juz_number}</small><p lang="ar" dir="rtl" style="font-family:serif;font-size:27px;line-height:2.1;text-align:right;margin:12px 0">${escapeHtml(a.text_uthmani)}</p></article>`).join("");}
+
+  // Mesin latihan awal: tiga tipe kuis berbasis ayat yang tersimpan di Supabase.
+  let gameState = { questions: [], index: 0, answers: [], surah: null, type: "continue_ayah", busy: false };
+  function renderGames(){
+    const el=$("#games"); if(!el) return;
+    const surahs=window.MQ_SURAHS||[];
+    el.innerHTML=`<div class="section-head"><div><p class="eyebrow">BELAJAR DENGAN SERU</p><h1>Permainan Hafalan</h1><p class="muted">Latihan singkat dari ayat Al-Qur'an yang tersedia di database.</p></div></div>
+      <div class="panel game-setup"><label>Jenis latihan<select id="gameType"><option value="continue_ayah">Sambung Ayat</option><option value="next_ayah">Tebak Lanjutan</option><option value="ayah_puzzle">Puzzle Kata</option></select></label>
+      <label>Pilih surah<select id="gameSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label>
+      <button class="primary-button" id="startGame" ${!currentUser?"disabled":""}>Mulai latihan</button>
+      <p class="muted game-note">${currentUser?"Pilih jenis latihan dan surah. Satu sesi berisi 5 soal.":"Masuk ke akun untuk menyimpan hasil latihan."}</p></div><div id="gameStage"></div>`;
+    if(!surahs.length && client) loadSurahs();
+  }
+  async function startGame(){
+    if(!currentUser){openAuth("login");return;}
+    const surahId=Number($("#gameSurah")?.value), type=$("#gameType")?.value||"continue_ayah";
+    const stage=$("#gameStage"); if(!stage)return;
+    stage.innerHTML='<div class="panel loading">Menyiapkan soal dari ayat...</div>';
+    const {data,error}=await client.from("ayahs").select("surah_id,ayah_number,text_uthmani").eq("surah_id",surahId).eq("verified",true).order("ayah_number");
+    if(error){stage.innerHTML=`<div class="panel loading">Tidak dapat memuat ayat: ${escapeHtml(error.message)}</div>`;return;}
+    if(!data||data.length<6){stage.innerHTML='<div class="panel loading">Surah ini belum memiliki cukup ayat terverifikasi untuk membuat 5 soal. Coba surah lain.</div>';return;}
+    gameState={questions:makeQuestions(data,type),index:0,answers:[],surah:surahId,type,busy:false};
+    renderGameQuestion();
+  }
+  function makeQuestions(rows,type){
+    const candidates=rows.slice(0,-1);
+    for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
+    return candidates.slice(0,5).map(a=>{
+      const next=rows.find(x=>x.ayah_number===a.ayah_number+1);
+      if(type==="ayah_puzzle"){
+        const words=(a.text_uthmani||"").split(/\s+/).filter(Boolean);
+        const shuffled=[...words]; for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
+        return {ayah:a,correct:words.join(" "),choices:shuffled,kind:type};
+      }
+      const options=[next?.text_uthmani,...rows.filter(x=>x.ayah_number!==a.ayah_number+1).slice(0,3).map(x=>x.text_uthmani)].filter(Boolean);
+      for(let i=options.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[options[i],options[j]]=[options[j],options[i]];}
+      return {ayah:a,correct:next?.text_uthmani,choices:options,kind:type};
+    }).filter(q=>q.correct);
+  }
+  function renderGameQuestion(){
+    const stage=$("#gameStage"),q=gameState.questions[gameState.index]; if(!stage||!q)return;
+    const total=gameState.questions.length;
+    stage.innerHTML=`<article class="panel game-question"><div class="game-progress"><span>Soal ${gameState.index+1} dari ${total}</span><span>${Math.round(gameState.index/total*100)}%</span></div><div class="game-progress-track"><i style="width:${gameState.index/total*100}%"></i></div><p class="eyebrow">${gameState.type==="ayah_puzzle"?"SUSUN KATA":"PERHATIKAN AYAT BERIKUT"}</p><p class="game-arabic" lang="ar" dir="rtl">${escapeHtml(q.kind==="ayah_puzzle"?q.ayah.text_uthmani:q.ayah.text_uthmani)}</p><p class="muted">${gameState.type==="continue_ayah"?"Pilih ayat yang tepat setelah ayat di atas.":gameState.type==="next_ayah"?"Manakah kelanjutan ayat berikutnya?":"Urutan kata diacak. Pilih susunan yang benar."}</p><div class="game-options">${q.choices.map((c,i)=>`<button class="game-option" data-answer="${i}" lang="ar" dir="rtl">${escapeHtml(c)}</button>`).join("")}</div></article>`;
+  }
+  async function chooseGameAnswer(index){
+    if(gameState.busy)return; gameState.busy=true;
+    const q=gameState.questions[gameState.index], chosen=q.choices[index], correct=chosen===q.correct;
+    gameState.answers.push({q,chosen,correct});
+    const stage=$("#gameStage");
+    stage.querySelectorAll(".game-option").forEach((b,i)=>{b.disabled=true;if(q.choices[i]===q.correct)b.classList.add("correct");else if(i===index)b.classList.add("wrong");});
+    const next=document.createElement("button");next.className="primary-button game-next";next.textContent=gameState.index===gameState.questions.length-1?"Lihat hasil":"Soal berikutnya";
+    stage.querySelector(".game-question").append(next);
+    next.addEventListener("click",async()=>{
+      gameState.index++;gameState.busy=false;
+      if(gameState.index<gameState.questions.length)renderGameQuestion();else await finishGame();
+    },{once:true});
+  }
+  async function finishGame(){
+    const stage=$("#gameStage"),answers=gameState.answers,total=answers.length,correct=answers.filter(a=>a.correct).length;
+    const score=Math.round(correct/total*100),xp=correct*10;
+    stage.innerHTML='<div class="panel loading">Menyimpan hasil latihan...</div>';
+    const first=answers[0]?.q.ayah;
+    const {data:session,error:sessionError}=await client.from("review_sessions").insert({
+      user_id:currentUser.id,surah_id:gameState.surah,start_ayah:Math.min(...answers.map(a=>a.q.ayah.ayah_number)),
+      end_ayah:Math.max(...answers.map(a=>a.q.ayah.ayah_number)),mode:"game",scope_type:"surah",
+      question_type:gameState.type,total_questions:total,correct_answers:correct,score,started_at:new Date().toISOString(),completed_at:new Date().toISOString(),duration_seconds:0
+    }).select("id").single();
+    if(sessionError){stage.innerHTML=`<div class="panel loading">Hasil belum tersimpan: ${escapeHtml(sessionError.message)}. Skor latihanmu ${score}%.</div>`;return;}
+    const resultRows=answers.map(a=>({session_id:session.id,surah_id:a.q.ayah.surah_id,ayah_number:a.q.ayah.ayah_number,result:a.correct?"fluent":"mistake",question_type:gameState.type,selected_answer:a.chosen,is_correct:a.correct,answered_at:new Date().toISOString()}));
+    const {error:resultError}=await client.from("ayah_review_results").insert(resultRows);
+    const attempts=answers.map(a=>({user_id:currentUser.id,game_type:gameState.type,surah_id:gameState.surah,question_ref:String(a.q.ayah.ayah_number),correct:a.correct,elapsed_seconds:0,xp_earned:a.correct?10:0}));
+    const {error:attemptError}=await client.from("game_attempts").insert(attempts);
+    const {data:reward}=await client.from("user_rewards").select("total_xp,current_streak,longest_streak,last_activity_date").eq("user_id",currentUser.id).maybeSingle();
+    const today=new Date().toISOString().slice(0,10);
+    const {error:rewardError}=await client.from("user_rewards").upsert({user_id:currentUser.id,total_xp:Number(reward?.total_xp||0)+xp,current_streak:reward?.last_activity_date===today?Number(reward.current_streak||1):Number(reward?.current_streak||0)+1,longest_streak:Math.max(Number(reward?.longest_streak||0),Number(reward?.current_streak||0)+1),last_activity_date:today,updated_at:new Date().toISOString()});
+    const warning=resultError||attemptError||rewardError;
+    stage.innerHTML=`<div class="panel game-result"><div class="result-medal">${score>=80?"🏆":"🌱"}</div><p class="eyebrow">SESI SELESAI</p><h2>${score}%</h2><p class="muted">${correct} dari ${total} jawaban benar</p><div class="result-xp">+${xp} XP</div>${warning?'<p class="muted">Sebagian detail hasil belum tersimpan. Skor sesi utama sudah tersimpan.</p>':'<p class="muted">Hasil latihan dan XP telah disimpan.</p>'}<button class="primary-button" id="playAgain">Latihan lagi</button></div>`;
+    $("#playAgain").addEventListener("click",renderGames);
+  }
+
   function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 })();
