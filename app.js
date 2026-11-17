@@ -224,7 +224,7 @@
     const candidates=rows.slice(0,-1);
     for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
     return candidates.slice(0,5).map(a=>{
-      const next=rows.find(x=>x.ayah_number===a.ayah_number+1);
+      const next=rows[rows.indexOf(a)+1];
       if(type==="ayah_puzzle"){
         const words=(a.text_uthmani||"").split(/\s+/).filter(Boolean);
         const correct=words.join(" ");
@@ -233,7 +233,7 @@
         for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
         return {ayah:a,correct,choices,kind:type};
       }
-      const options=[next?.text_uthmani,...rows.filter(x=>x.ayah_number!==a.ayah_number+1).slice(0,3).map(x=>x.text_uthmani)].filter(Boolean);
+      const options=[next?.text_uthmani,...rows.filter(x=>x!==next && x!==a).slice(0,3).map(x=>x.text_uthmani)].filter(Boolean);
       for(let i=options.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[options[i],options[j]]=[options[j],options[i]];}
       return {ayah:a,correct:next?.text_uthmani,choices:options,kind:type};
     }).filter(q=>q.correct);
