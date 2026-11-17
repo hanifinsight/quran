@@ -358,7 +358,7 @@
         for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
         const choices=[a.text_uthmani,...candidates.slice(0,3).map(x=>x.text_uthmani)];
         for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
-        return {ayah:a,correct:a.text_uthmani,choices,prompt:"Ayat manakah yang tepat untuk mengisi bagian yang kosong?",display:`Ayat ${prev.ayah_number}: ${prev.text_uthmani}   ۞   Ayat ${a.ayah_number}: [SATU AYAT DIKOSONGKAN]   ۞   Ayat ${next.ayah_number}: ${next.text_uthmani}`,kind:type};
+        return {ayah:a,correct:a.text_uthmani,choices,prompt:"Pilih ayat lengkap yang tepat untuk melanjutkan rangkaian bacaan.",contextBefore:prev.text_uthmani,contextAfter:next.text_uthmani,previousNumber:prev.ayah_number,nextNumber:next.ayah_number,kind:type};
       }).filter(q=>q.choices.length===4);
     }
     const pool=ordered.slice();
@@ -382,7 +382,10 @@
     const stage=$("#gameStage"),q=gameState.questions[gameState.index];if(!stage||!q)return;
     const total=gameState.questions.length;
     const label=gameState.type==="ayah_gap"?"AYAT RUMPANG":gameState.type==="guess_surah"?"TEBAK SURAH":"TEBAK JUZ";
-    stage.innerHTML=`<article class="panel game-question"><div class="game-progress"><span>Soal ${gameState.index+1} dari ${total}</span><span>${Math.round(gameState.index/total*100)}%</span></div><div class="game-progress-track"><i style="width:${gameState.index/total*100}%"></i></div><p class="eyebrow">${label}</p><p class="game-arabic" lang="ar" dir="rtl">${escapeHtml(q.display)}</p><p class="muted">${escapeHtml(q.prompt)}</p><div class="game-options">${q.choices.map((v,i)=>`<button class="game-option ${gameState.type==="guess_surah"||gameState.type==="guess_juz"||gameState.type==="ayah_gap"?"game-option-text":""}" data-answer="${i}">${escapeHtml(v)}</button>`).join("")}</div></article>`;
+    const questionBody=gameState.type==="ayah_gap"
+      ? `<div class="gap-context"><div class="gap-context-label">AYAT SEBELUMNYA · AYAT ${q.previousNumber}</div><p class="gap-context-arabic" lang="ar" dir="rtl">${escapeHtml(q.contextBefore)}</p><div class="gap-missing"><span>AYAT BERIKUTNYA YANG DICARI</span><strong>?</strong><small>Pilih satu ayat lengkap di bawah</small></div><div class="gap-context-label">AYAT SESUDAHNYA · AYAT ${q.nextNumber}</div><p class="gap-context-arabic" lang="ar" dir="rtl">${escapeHtml(q.contextAfter)}</p></div>`
+      : `<p class="game-arabic" lang="ar" dir="rtl">${escapeHtml(q.display)}</p>`;
+    stage.innerHTML=`<article class="panel game-question"><div class="game-progress"><span>Soal ${gameState.index+1} dari ${total}</span><span>${Math.round(gameState.index/total*100)}%</span></div><div class="game-progress-track"><i style="width:${gameState.index/total*100}%"></i></div><p class="eyebrow">${label}</p>${questionBody}<p class="muted game-question-prompt">${escapeHtml(q.prompt)}</p><div class="game-options">${q.choices.map((v,i)=>`<button class="game-option ${gameState.type==="guess_surah"||gameState.type==="guess_juz"||gameState.type==="ayah_gap"?"game-option-text":""}" data-answer="${i}"><span class="game-option-letter">${String.fromCharCode(65+i)}</span><span class="game-option-content">${escapeHtml(v)}</span></button>`).join("")}</div></article>`;
   }
   async function chooseGameAnswer(index){
     if(gameState.busy)return; gameState.busy=true;
