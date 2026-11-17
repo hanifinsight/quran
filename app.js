@@ -5,11 +5,15 @@
   const quranHomeHTML = `<div class="section-head"><div><p class="eyebrow">AL-QUR'AN</p><h1>Daftar Surah</h1><p class="muted">Pilih surah untuk melihat ayat dan memulai hafalan.</p></div></div><div class="search-row"><input id="surahSearch" type="search" placeholder="Cari nama surah..."><span id="surahCount" class="muted">Memuat data...</span></div><div id="surahList" class="surah-list"><div class="loading">Menyiapkan daftar surah...</div></div>`;
   const cfg = window.MQ_CONFIG || {};
   const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && !cfg.SUPABASE_URL.startsWith("ISI_") && !cfg.SUPABASE_ANON_KEY.startsWith("ISI_");
-  let client = null, currentUser = null, authMode = "login", pendingPage = null;
+  let client = null, currentUser = null, authMode = "login", pendingPage = null, authReady = false;
 
   function showPage(id) {
     const target = document.getElementById(id);
     if (!target || !target.classList.contains("page")) id = "dashboard";
+    if (["hafalan", "murojaah", "games", "pencapaian"].includes(id) && !authReady) {
+      pendingPage = id;
+      return;
+    }
     if (["hafalan", "murojaah", "games", "pencapaian"].includes(id) && !currentUser) {
       pendingPage = id;
       $("#sidebar").classList.remove("open");
@@ -115,7 +119,7 @@
         $("#authMessage").textContent=data.session ? "Pendaftaran berhasil dan Anda sudah masuk." : "Pendaftaran berhasil. Periksa email untuk konfirmasi, lalu masuk.";
       } else {
         const {data,error}=await client.auth.signInWithPassword({email,password}); if(error) throw error;
-        currentUser=data.user||data.session?.user||null; updateAuthUI();
+        currentUser=data.user||data.session?.user||null; authReady=true; updateAuthUI();
         const destination=pendingPage||"dashboard"; closeAuth(); pendingPage=null; showPage(destination);
       }
     } catch(err) { $("#authMessage").textContent=err.message||"Terjadi kesalahan."; }
@@ -125,11 +129,30 @@
   const initial = location.hash.replace("#","") || "dashboard";
   if(configured && window.supabase){ client=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY); }
   if(client){
-    client.auth.getSession().then(({data})=>{currentUser=data.session?.user||null;updateAuthUI();});
-    client.auth.onAuthStateChange((event,session)=>{currentUser=session?.user||null;updateAuthUI();if(event==="PASSWORD_RECOVERY")openAuth("recovery");});
-  } else { $("#surahList").innerHTML='<div class="panel loading">Hubungkan Supabase terlebih dahulu untuk memuat 114 surah.</div>'; $("#surahCount").textContent="Belum terhubung"; }
+    // Tunggu INITIAL_SESSION dari Supabase sebelum menentukan apakah halaman privat
+    // harus membuka login. Ini mencegah refresh menganggap pengguna sebagai tamu.
+    client.auth.onAuthStateChange((event,session)=>{
+      currentUser=session?.user||null;
+      authReady=true;
+      updateAuthUI();
+      if(event==="INITIAL_SESSION"){
+        const destination=pendingPage||initial;
+        pendingPage=null;
+        showPage(destination);
+      } else if(event==="SIGNED_OUT" && ["hafalan","murojaah","games","pencapaian"].includes(location.hash.replace("#",""))){
+        showPage("dashboard");
+      } else if(event==="PASSWORD_RECOVERY"){
+        openAuth("recovery");
+      }
+    });
+  } else {
+    authReady=true;
+    $("#surahList").innerHTML='<div class="panel loading">Hubungkan Supabase terlebih dahulu untuk memuat 114 surah.</div>';
+    $("#surahCount").textContent="Belum terhubung";
+  }
   updateAuthUI();
   showPage(document.getElementById(initial) ? initial : "dashboard");
+
   if(client){ renderQuranHome(); loadSurahs(); }
 
   function renderDashboard(){
