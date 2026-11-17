@@ -203,7 +203,7 @@
     const el=$("#games"); if(!el) return;
     const surahs=window.MQ_SURAHS||[];
     el.innerHTML=`<div class="section-head"><div><p class="eyebrow">BELAJAR DENGAN SERU</p><h1>Permainan Hafalan</h1><p class="muted">Latihan singkat dari ayat Al-Qur'an yang tersedia di database.</p></div></div>
-      <div class="panel game-setup"><label>Jenis latihan<select id="gameType"><option value="continue_ayah">Sambung Ayat</option><option value="next_ayah">Tebak Lanjutan</option><option value="ayah_puzzle">Puzzle Kata</option></select></label>
+      <div class="game-type-grid"><button type="button" class="game-type-card selected" data-game-type="continue_ayah"><span class="game-type-icon">↗</span><strong>Sambung Ayat</strong><small>Pilih ayat setelah bacaan.</small></button><button type="button" class="game-type-card" data-game-type="next_ayah"><span class="game-type-icon">✦</span><strong>Tebak Lanjutan</strong><small>Tebak kelanjutan ayat.</small></button><button type="button" class="game-type-card" data-game-type="ayah_puzzle"><span class="game-type-icon">▦</span><strong>Puzzle Kata</strong><small>Kenali susunan kata.</small></button></div><div class="panel game-setup"><input type="hidden" id="gameType" value="continue_ayah">
       <label>Pilih surah<select id="gameSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label>
       <button class="primary-button" id="startGame" ${!currentUser?"disabled":""}>Mulai latihan</button>
       <p class="muted game-note">${currentUser?"Pilih jenis latihan dan surah. Satu sesi berisi 5 soal.":"Masuk ke akun untuk menyimpan hasil latihan."}</p></div><div id="gameStage"></div>`;
