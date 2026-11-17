@@ -217,7 +217,9 @@
     let query=client.from("ayahs").select("surah_id,ayah_number,juz_number,text_uthmani").eq("verified",true).order("surah_id").order("ayah_number"); query=scope==="juz"?query.eq("juz_number",juz):query.eq("surah_id",surahId); const {data,error}=await query;
     if(error){stage.innerHTML=`<div class="panel loading">Tidak dapat memuat ayat: ${escapeHtml(error.message)}</div>`;return;}
     if(!data||data.length<2){stage.innerHTML='<div class="panel loading">Data ayat belum cukup untuk latihan ini.</div>';return;}
-    gameState={questions:makeQuestions(data,type),index:0,answers:[],surah:scope==="surah"?surahId:null,juz:scope==="juz"?juz:null,scope,type,busy:false};
+    const questions=makeQuestions(data,type);
+    if(!questions.length){stage.innerHTML='<div class="panel loading">Belum ada cukup ayat yang sesuai untuk jenis latihan ini. Silakan pilih surah atau juz lain.</div>';return;}
+    gameState={questions,index:0,answers:[],surah:scope==="surah"?surahId:null,juz:scope==="juz"?juz:null,scope,type,busy:false};
     renderGameQuestion();
   }
   function makeQuestions(rows,type){
