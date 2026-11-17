@@ -32,10 +32,11 @@
   }
   // Delegasi klik membuat seluruh item navigasi tetap responsif, termasuk setelah render ulang.
   document.addEventListener("click", e => {
-    const link = e.target.closest(".nav-link[data-page]");
+    const link = e.target.closest(".nav-link[data-page], .public-brand[data-page]");
     if (!link) return;
     e.preventDefault();
     showPage(link.dataset.page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
   $("#menuButton").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
 
