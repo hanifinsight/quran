@@ -213,7 +213,7 @@
     if(!currentUser){openAuth("login");return;}
     const scope=$("#gameScope")?.value||"all",surahId=Number($("#gameSurah")?.value),juz=Number($("#gameJuz")?.value),type=selectedGameType,stage=$("#gameStage");
     if(!stage)return;stage.innerHTML='<div class="panel loading">Menyiapkan soal...</div>';
-    let query=client.from("ayahs").select("surah_id,ayah_number,juz_number,text_uthmani").eq("verified",true).order("surah_id").order("ayah_number").limit(1000);
+    let query=client.from("ayahs").select("surah_id,ayah_number,juz_number,text_uthmani").eq("verified",true).order("surah_id").order("ayah_number");
     if(scope==="surah")query=query.eq("surah_id",surahId);if(scope==="juz")query=query.eq("juz_number",juz);
     const {data,error}=await query;
     if(error){stage.innerHTML=`<div class="panel loading">${escapeHtml(error.message)}</div>`;return;}
