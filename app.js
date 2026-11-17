@@ -7,8 +7,21 @@
   const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && !cfg.SUPABASE_URL.startsWith("ISI_") && !cfg.SUPABASE_ANON_KEY.startsWith("ISI_");
   let client = null, currentUser = null, authMode = "login", pendingPage = null, authReady = false;
 
+  function isGameInProgress(){
+    return Boolean(gameState?.questions?.length && gameState.index < gameState.questions.length && !gameState.completed);
+  }
+  window.addEventListener("beforeunload",event=>{
+    if(!isGameInProgress())return;
+    event.preventDefault();
+    event.returnValue="";
+  });
   function showPage(id) {
     const target = document.getElementById(id);
+    if(id!=="games" && isGameInProgress()){
+      const leave=window.confirm("Permainan masih berlangsung. Jika keluar sekarang, progres sesi ini akan hilang. Yakin ingin meninggalkan permainan?");
+      if(!leave)return;
+      gameState.completed=true;
+    }
     if (!target || !target.classList.contains("page")) id = "dashboard";
     if (["hafalan", "murojaah", "games", "pencapaian"].includes(id) && !authReady) {
       pendingPage = id;
@@ -341,7 +354,7 @@
     if(error){stage.innerHTML=`<div class="panel loading">${escapeHtml(error.message)}</div>`;return;}
     if(!data||data.length<2){stage.innerHTML='<div class="panel loading">Data ayat belum cukup.</div>';return;}
     const questions=makeQuestions(data,type);if(!questions.length){stage.innerHTML='<div class="panel loading">Tidak ada soal yang sesuai.</div>';return;}
-    gameState={questions,index:0,answers:[],surah:scope==="surah"?surahId:null,juz:scope==="juz"?juz:null,scope,type,busy:false};renderGameQuestion();
+    gameState={questions,index:0,answers:[],surah:scope==="surah"?surahId:null,juz:scope==="juz"?juz:null,scope,type,busy:false,completed:false};renderGameQuestion();
   }
   function makeQuestions(rows,type){
     const ordered=rows.filter(r=>r.text_uthmani&&r.text_uthmani.trim()).slice().sort((x,y)=>Number(x.surah_id)-Number(y.surah_id)||Number(x.ayah_number)-Number(y.ayah_number));
@@ -402,7 +415,7 @@
   }
   async function finishGame(){
     const stage=$("#gameStage"),answers=gameState.answers,total=answers.length,correct=answers.filter(a=>a.correct).length;
-    const score=Math.round(correct/total*100),xp=correct*10;
+    const score=Math.round(correct/total*100),xp=correct*10;\n    gameState.completed=true;
     stage.innerHTML='<div class="panel loading">Menyimpan hasil latihan...</div>';
     const first=answers[0]?.q.ayah;
     const {data:session,error:sessionError}=await client.from("review_sessions").insert({
