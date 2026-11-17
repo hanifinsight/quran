@@ -290,42 +290,35 @@
     gameState={questions,index:0,answers:[],surah:scope==="surah"?surahId:null,juz:scope==="juz"?juz:null,scope,type,busy:false};renderGameQuestion();
   }
   function makeQuestions(rows,type){
-    const pool=rows.filter(r=>r.text_uthmani&&r.text_uthmani.trim());
-    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+    const ordered=rows.filter(r=>r.text_uthmani&&r.text_uthmani.trim()).slice().sort((x,y)=>Number(x.surah_id)-Number(y.surah_id)||Number(x.ayah_number)-Number(y.ayah_number));
     const surahMap=new Map((window.MQ_SURAHS||[]).map(s=>[Number(s.id),s]));
+    if(type==="ayah_gap"){
+      // Satu ayat utuh dikosongkan. Tampilkan konteks ayat sebelumnya dan sesudahnya.
+      const eligible=ordered.filter(a=>ordered.some(p=>Number(p.surah_id)===Number(a.surah_id)&&Number(p.ayah_number)===Number(a.ayah_number)-1)
+        && ordered.some(n=>Number(n.surah_id)===Number(a.surah_id)&&Number(n.ayah_number)===Number(a.ayah_number)+1));
+      for(let i=eligible.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[eligible[i],eligible[j]]=[eligible[j],eligible[i]];}
+      return eligible.slice(0,5).map(a=>{
+        const prev=ordered.find(x=>Number(x.surah_id)===Number(a.surah_id)&&Number(x.ayah_number)===Number(a.ayah_number)-1);
+        const next=ordered.find(x=>Number(x.surah_id)===Number(a.surah_id)&&Number(x.ayah_number)===Number(a.ayah_number)+1);
+        const candidates=ordered.filter(x=>Number(x.surah_id)===Number(a.surah_id)&&Number(x.ayah_number)!==Number(a.ayah_number)&&x.text_uthmani!==a.text_uthmani);
+        for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
+        const choices=[a.text_uthmani,...candidates.slice(0,3).map(x=>x.text_uthmani)];
+        for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
+        return {ayah:a,correct:a.text_uthmani,choices,prompt:"Ayat manakah yang tepat untuk mengisi bagian yang kosong?",display:`Ayat ${prev.ayah_number}: ${prev.text_uthmani}   ۞   Ayat ${a.ayah_number}: [SATU AYAT DIKOSONGKAN]   ۞   Ayat ${next.ayah_number}: ${next.text_uthmani}`,kind:type};
+      }).filter(q=>q.choices.length===4);
+    }
+    const pool=ordered.slice();
+    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
     return pool.slice(0,5).map(a=>{
       let correct,choices=[],prompt="",display=a.text_uthmani;
-      if(type==="ayah_gap"){
-        const words=a.text_uthmani.split(/\s+/).filter(Boolean);
-        if(words.length<3)return null;
-        const missingIndex=Math.floor(Math.random()*words.length);
-        correct=words[missingIndex];
-        const shown=[...words];shown[missingIndex]="ــــــ";
-        display=shown.join(" ");
-        // Pengecoh berasal dari kata Al-Qur'an dengan panjang visual yang mirip.
-        const candidates=[...new Set(pool.flatMap(r=>r.text_uthmani.split(/\s+/))
-          .filter(w=>w!==correct && Math.abs([...w].length-[...correct].length)<=2
-            && !/[۞۩]/u.test(w)))];
+      if(type==="guess_surah"){
+        const actual=surahMap.get(Number(a.surah_id));correct=actual?.name_latin;if(!correct)return null;
+        const candidates=[...surahMap.values()].filter(s=>Number(s.id)!==Number(a.surah_id)&&s.revelation_type===actual.revelation_type&&Math.abs(Number(s.ayah_count)-Number(actual.ayah_count))<=Math.max(25,Math.round(Number(actual.ayah_count)*0.6)));
         for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
-        choices=[correct,...candidates.slice(0,3)];
-        prompt="Pilih kata yang paling tepat untuk melengkapi ayat.";
-      } else if(type==="guess_surah"){
-        const actual=surahMap.get(Number(a.surah_id));
-        correct=actual?.name_latin;
-        if(!correct)return null;
-        // Surah pengecoh memiliki periode wahyu dan jumlah ayat yang relatif sebanding.
-        const candidates=[...surahMap.values()].filter(s=>Number(s.id)!==Number(a.surah_id)
-          && s.revelation_type===actual.revelation_type
-          && Math.abs(Number(s.ayah_count)-Number(actual.ayah_count))<=Math.max(25,Math.round(Number(actual.ayah_count)*0.6)));
-        for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
-        choices=[correct,...candidates.slice(0,3).map(s=>s.name_latin)];
-        prompt="Perhatikan ayatnya. Dari surah manakah ayat ini berasal?";
-      } else {
-        correct=String(a.juz_number);
-        // Juz yang berdekatan menjadi pengecoh yang lebih masuk akal.
-        const candidates=[-2,-1,1,2].map(offset=>Number(correct)+offset).filter(n=>n>=1&&n<=30);
-        choices=[correct,...candidates.slice(0,3).map(String)];
-        prompt="Ayat ini berada di juz berapa?";
+        choices=[correct,...candidates.slice(0,3).map(s=>s.name_latin)];prompt="Perhatikan ayatnya. Dari surah manakah ayat ini berasal?";
+      }else{
+        correct=String(a.juz_number);const candidates=[-2,-1,1,2].map(n=>Number(correct)+n).filter(n=>n>=1&&n<=30);
+        choices=[correct,...candidates.slice(0,3).map(String)];prompt="Ayat ini berada di juz berapa?";
       }
       for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
       return {ayah:a,correct,choices,prompt,kind:type,display};
@@ -335,7 +328,7 @@
     const stage=$("#gameStage"),q=gameState.questions[gameState.index];if(!stage||!q)return;
     const total=gameState.questions.length;
     const label=gameState.type==="ayah_gap"?"AYAT RUMPANG":gameState.type==="guess_surah"?"TEBAK SURAH":"TEBAK JUZ";
-    stage.innerHTML=`<article class="panel game-question"><div class="game-progress"><span>Soal ${gameState.index+1} dari ${total}</span><span>${Math.round(gameState.index/total*100)}%</span></div><div class="game-progress-track"><i style="width:${gameState.index/total*100}%"></i></div><p class="eyebrow">${label}</p><p class="game-arabic" lang="ar" dir="rtl">${escapeHtml(q.display)}</p><p class="muted">${escapeHtml(q.prompt)}</p><div class="game-options">${q.choices.map((v,i)=>`<button class="game-option ${gameState.type==="guess_surah"||gameState.type==="guess_juz"?"game-option-text":""}" data-answer="${i}">${escapeHtml(v)}</button>`).join("")}</div></article>`;
+    stage.innerHTML=`<article class="panel game-question"><div class="game-progress"><span>Soal ${gameState.index+1} dari ${total}</span><span>${Math.round(gameState.index/total*100)}%</span></div><div class="game-progress-track"><i style="width:${gameState.index/total*100}%"></i></div><p class="eyebrow">${label}</p><p class="game-arabic" lang="ar" dir="rtl">${escapeHtml(q.display)}</p><p class="muted">${escapeHtml(q.prompt)}</p><div class="game-options">${q.choices.map((v,i)=>`<button class="game-option ${gameState.type==="guess_surah"||gameState.type==="guess_juz"||gameState.type==="ayah_gap"?"game-option-text":""}" data-answer="${i}">${escapeHtml(v)}</button>`).join("")}</div></article>`;
   }
   async function chooseGameAnswer(index){
     if(gameState.busy)return; gameState.busy=true;
