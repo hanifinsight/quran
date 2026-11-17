@@ -221,6 +221,9 @@
       $("#learnJuzField").hidden=scope!=="juz";
     }
   });
+  document.addEventListener("change",e=>{
+    if(e.target.matches("#taJuzSelect")){tileAdventureState.selectedJuz=e.target.value;tileAdventureState.challenge=null;renderTileAdventure();}
+  });
   document.addEventListener("click",e=>{
     const auth=e.target.closest("[data-auth]");
     if(auth){openAuth(auth.dataset.auth);return;}
@@ -297,7 +300,7 @@
     const tiles=run.board_state?.tiles||[],inventory=run.inventory||[];
     const totalTiles=tiles.length+inventory.length,remainingTiles=Math.max(0,MAX_ADVENTURE_TILES-totalTiles);
     const selected=inventory.find(t=>t.id===tileAdventureState.selectedTile);
-    const margin=2;
+    const margin=1;
     const minX=Math.min(...tiles.map(t=>Number(t.x)))-margin,maxX=Math.max(...tiles.map(t=>Number(t.x)))+margin;
     const minY=Math.min(...tiles.map(t=>Number(t.y)))-margin,maxY=Math.max(...tiles.map(t=>Number(t.y)))+margin;
     const cols=maxX-minX+1,rows=maxY-minY+1,grid=[];
@@ -645,7 +648,6 @@
   document.addEventListener("click",e=>{
     if(e.target.closest("[data-tile-adventure]")){selectedGameType="tile_adventure";loadTileAdventure();return;}
     if(e.target.closest("#taStartChallenge")){startTileChallenge();return;}
-    if(e.target.closest("#taJuzSelect")){tileAdventureState.selectedJuz=e.target.value;tileAdventureState.challenge=null;renderTileAdventure();return;}
     if(e.target.closest("#taNextChallenge")){tileAdventureState.challenge=null;startTileChallenge();return;}
     const taAnswer=e.target.closest("[data-ta-answer]");if(taAnswer){answerTileChallenge(Number(taAnswer.dataset.taAnswer));return;}
     const taSelect=e.target.closest("[data-ta-select]");if(taSelect){tileAdventureState.selectedTile=taSelect.dataset.taSelect;tileAdventureState.rotation=0;renderTileAdventure();return;}
