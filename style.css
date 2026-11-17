@@ -438,3 +438,18 @@ button.ta-cell{cursor:pointer}
 @keyframes ta-tile-arrive{from{opacity:0;transform:scale(.72) rotate(-5deg)}to{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes ta-place-pulse{0%,100%{box-shadow:0 0 0 0 rgba(185,148,80,0)}50%{box-shadow:0 0 0 4px rgba(185,148,80,.12)}}
 @media(prefers-reduced-motion:reduce){.ta-cell.occupied,.ta-cell.placeable{animation:none!important}.ta-tile-art,.ta-inventory-item,.ta-challenge .primary-button{transition:none!important}}
+
+/* Tile Adventure restart and end-of-run feedback */
+.ta-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.ta-restart{white-space:nowrap;min-height:40px;padding:9px 14px;border-color:#cbd9cf;color:#285b45;background:#f6faf5}
+.ta-restart:hover{background:#eaf3e9;border-color:#8eae97}
+.ta-outcome{display:flex;align-items:flex-start;gap:16px;margin:0 0 18px;padding:20px;border:1px solid #d7e7d6;border-radius:16px;background:linear-gradient(135deg,#f0f8ed,#fffaf0)}
+.ta-outcome.lost{border-color:#ead9bc;background:linear-gradient(135deg,#fbf5e9,#fff)}
+.ta-outcome-icon{display:grid;place-items:center;flex:0 0 54px;width:54px;height:54px;border-radius:16px;background:#deeed9;font-size:28px}
+.ta-outcome.lost .ta-outcome-icon{background:#f4e8d1}
+.ta-outcome h2{font-size:22px;margin:2px 0 7px}
+.ta-outcome p:not(.eyebrow){margin:0 0 9px;color:var(--muted);line-height:1.6}
+.ta-outcome strong{display:block;color:#2e6548;font-size:13px;margin-bottom:12px}
+.ta-outcome.lost strong{color:#866536}
+.ta-outcome .primary-button{min-height:42px;padding:9px 18px}
+@media(max-width:600px){.ta-title-row{align-items:flex-start}.ta-restart{font-size:12px;padding:8px 10px}.ta-outcome{padding:15px;gap:11px}.ta-outcome-icon{width:42px;height:42px;flex-basis:42px;font-size:22px}.ta-outcome h2{font-size:18px}}
