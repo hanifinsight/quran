@@ -204,8 +204,11 @@
       const next=rows.find(x=>x.ayah_number===a.ayah_number+1);
       if(type==="ayah_puzzle"){
         const words=(a.text_uthmani||"").split(/\s+/).filter(Boolean);
-        const shuffled=[...words]; for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
-        return {ayah:a,correct:words.join(" "),choices:shuffled,kind:type};
+        const correct=words.join(" ");
+        const choices=[correct];
+        while(choices.length<4){const shuffled=[...words];for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}const candidate=shuffled.join(" ");if(!choices.includes(candidate))choices.push(candidate);}
+        for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
+        return {ayah:a,correct,choices,kind:type};
       }
       const options=[next?.text_uthmani,...rows.filter(x=>x.ayah_number!==a.ayah_number+1).slice(0,3).map(x=>x.text_uthmani)].filter(Boolean);
       for(let i=options.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[options[i],options[j]]=[options[j],options[i]];}
@@ -253,5 +256,11 @@
     $("#playAgain").addEventListener("click",renderGames);
   }
 
-  function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+  document.addEventListener("click",e=>{
+    if(e.target.closest("#startGame")){startGame();return;}
+    const answer=e.target.closest(".game-option[data-answer]");
+    if(answer) chooseGameAnswer(Number(answer.dataset.answer));
+  });
+\n  function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 })();
