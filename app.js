@@ -5,10 +5,10 @@
   const quranHomeHTML = `<div class="section-head"><div><p class="eyebrow">AL-QUR'AN</p><h1>Daftar Surah</h1><p class="muted">Pilih surah untuk melihat ayat dan memulai hafalan.</p></div></div><div class="search-row"><input id="surahSearch" type="search" placeholder="Cari nama surah..."><span id="surahCount" class="muted">Memuat data...</span></div><div id="surahList" class="surah-list"><div class="loading">Menyiapkan daftar surah...</div></div>`;
   const cfg = window.MQ_CONFIG || {};
   const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && !cfg.SUPABASE_URL.startsWith("ISI_") && !cfg.SUPABASE_ANON_KEY.startsWith("ISI_");
-  let client = null, currentUser = null, authMode = "login";
+  let client = null, currentUser = null, authMode = "login", pendingPage = null;
 
   function showPage(id) {
-    if (["hafalan", "murojaah", "pencapaian"].includes(id) && !currentUser) { openAuth("login"); return; }
+    if (["hafalan", "murojaah", "pencapaian"].includes(id) && !currentUser) { pendingPage = id; openAuth("login"); return; }
     pages.forEach(p => p.classList.toggle("active-page", p.id === id));
     navLinks.forEach(a => a.classList.toggle("active", a.dataset.page === id));
     $("#pageTitle").textContent = ({dashboard:"Dashboard",quran:"Al-Qur'an",hafalan:"Hafalan Saya",murojaah:"Jadwal Murojaah",games:"Permainan",pencapaian:"Pencapaian"})[id] || "Dashboard";
@@ -25,7 +25,9 @@
     const profile = $("#profileButton");
     profile.innerHTML = `<span class="avatar">${escapeHtml(name.slice(0,1).toUpperCase())}</span><span><b>${escapeHtml(name)}</b><small>${currentUser ? "Akun aktif · Kelola akun" : "Mode pengunjung · Masuk"}</small></span><span class="dots">···</span>`;
     profile.onclick = () => openAuth(currentUser ? "account" : "login");
-    document.querySelector(".top-actions .avatar.small").textContent = name.slice(0,1).toUpperCase();
+    const topAvatar = $("#topAvatar"); if (topAvatar) topAvatar.textContent = name.slice(0,1).toUpperCase();
+    $("#topLogin").hidden = !!currentUser; $("#topLogout").hidden = !currentUser;
+    renderDashboard();
   }
   function openAuth(mode="login") {
     authMode = mode; $("#authOverlay").hidden = false; $("#authMessage").textContent = ""; $("#authForm").hidden = mode === "account";
@@ -40,9 +42,13 @@
   }
   function closeAuth(){ $("#authOverlay").hidden = true; }
   $("#authClose").addEventListener("click", closeAuth);
+  $("#topLogin").addEventListener("click", () => openAuth("login"));
+  $("#topAvatar").addEventListener("click", () => openAuth(currentUser ? "account" : "login"));
+  async function doLogout(){ if(!client || !currentUser) return; if(!confirm("Keluar dari akun Murojaah Quest?")) return; const {error}=await client.auth.signOut(); if(error){ $("#authMessage").textContent=error.message; openAuth("account"); return; } closeAuth(); showPage("dashboard"); }
+  $("#topLogout").addEventListener("click", doLogout);
   $("#authOverlay").addEventListener("click", e => { if(e.target === $("#authOverlay")) closeAuth(); });
   $("#authSwitch").addEventListener("click", () => openAuth(authMode === "signup" ? "login" : "signup"));
-  $("#authLogout").addEventListener("click", async () => { const {error}=await client.auth.signOut(); if(error){$("#authMessage").textContent=error.message;return;} closeAuth(); });
+  $("#authLogout").addEventListener("click", doLogout);
   $("#authForm").addEventListener("submit", async e => {
     e.preventDefault(); if(!client) return;
     const email=$("#authEmail").value.trim(), password=$("#authPassword").value;
@@ -57,6 +63,7 @@
       } else {
         const {error}=await client.auth.signInWithPassword({email,password}); if(error) throw error;
         closeAuth();
+        if (pendingPage) { const destination=pendingPage; pendingPage=null; showPage(destination); }
       }
     } catch(err) { $("#authMessage").textContent=err.message || "Terjadi kesalahan."; }
     finally { submit.disabled=false; submit.textContent=authMode === "signup" ? "Daftar" : "Masuk"; }
@@ -71,6 +78,17 @@
   updateAuthUI();
   showPage(document.getElementById(initial) ? initial : "dashboard");
   if(client){ renderQuranHome(); loadSurahs(); }
+
+  function renderDashboard(){
+    const el=$("#dashboard"); if(!el) return;
+    const name=currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "Pengguna";
+    if(!currentUser){
+      el.innerHTML=`<div class="welcome"><div><p class="eyebrow">ASSALAMU'ALAIKUM 👋</p><h1>Mulai perjalanan menjaga hafalan.</h1><p class="muted">Baca Al-Qur'an kapan saja. Masuk untuk mencatat hafalan, mengatur murojaah, dan melihat perkembangan pribadi.</p><div class="dashboard-actions"><button class="primary-button" data-auth="signup">Buat akun gratis</button><button class="secondary-button" data-auth="login">Masuk</button><button class="secondary-button" data-go="quran">Baca Al-Qur'an</button></div></div><div class="welcome-art" aria-hidden="true">۞</div></div><div class="content-grid"><article class="panel"><p class="eyebrow">UNTUK PENGUNJUNG</p><h2>Jelajahi Al-Qur'an</h2><p class="muted">Buka daftar 114 surah dan baca ayat tanpa perlu membuat akun.</p><button class="primary-button" data-go="quran">Mulai membaca</button></article><article class="panel"><p class="eyebrow">SIMPAN PERJALANANMU</p><h2>Hafalan dan progres pribadi</h2><p class="muted">Masuk atau daftar untuk mulai mencatat hafalan dan membangun kebiasaan murojaah.</p><button class="secondary-button" data-auth="signup">Daftar sekarang</button></article></div>`;
+    } else {
+      el.innerHTML=`<div class="welcome"><div><p class="eyebrow">ASSALAMU'ALAIKUM 👋</p><h1>Selamat datang, ${escapeHtml(name)}.</h1><p class="muted">Lanjutkan perjalanan menjaga hafalan. Sedikit demi sedikit, secara konsisten.</p><div class="dashboard-actions"><button class="primary-button" data-go="hafalan">Buka Hafalan Saya</button><button class="secondary-button" data-go="quran">Baca Al-Qur'an</button></div></div><div class="welcome-art" aria-hidden="true">۞</div></div><div class="stats-grid"><article class="stat-card"><span class="stat-icon green">▤</span><div><small>Surah dihafal</small><strong>0</strong><small class="muted">Surah tercatat</small></div></article><article class="stat-card"><span class="stat-icon gold">✧</span><div><small>Ayat dikuasai</small><strong>0</strong><small class="muted">Ayat hafalan</small></div></article><article class="stat-card"><span class="stat-icon blue">↻</span><div><small>Perlu murojaah</small><strong>0</strong><small class="muted">Target berikutnya</small></div></article><article class="stat-card"><span class="stat-icon purple">☆</span><div><small>Total XP</small><strong>0</strong><small class="muted">Terus bertumbuh</small></div></article></div><div class="content-grid"><article class="panel"><p class="eyebrow">MULAI HARI INI</p><h2>Target murojaah</h2><p class="muted">Belum ada hafalan yang tercatat. Tambahkan hafalan pertamamu untuk memulai.</p><button class="primary-button" data-go="hafalan">+ Tambah hafalan</button></article><article class="panel"><p class="eyebrow">AKUN AKTIF</p><h2>${escapeHtml(currentUser.email||"")}</h2><p class="muted">Progres pribadi akan ditampilkan di dashboard setelah data hafalan tersedia.</p><button class="secondary-button" data-go="pencapaian">Lihat pencapaian</button></article></div>`;
+    }
+  }
+  document.addEventListener("click",e=>{const a=e.target.closest("[data-auth]");if(a)openAuth(a.dataset.auth);});
 
   function renderQuranHome(){ $("#quran").innerHTML=quranHomeHTML; if(window.MQ_SURAHS) renderSurahs(filterSurahs($("#surahSearch").value)); }
   async function loadSurahs(){ if(!$("#surahList")) renderQuranHome(); const el=$("#surahList"); if(!el)return; el.innerHTML='<div class="loading">Memuat daftar surah...</div>'; const {data,error}=await client.from("surahs").select("id,name_ar,name_latin,ayah_count,revelation_type").order("id"); if(!$("#surahList"))renderQuranHome(); const list=$("#surahList"); if(!list)return; if(error){list.innerHTML=`<div class="panel loading">Gagal memuat data: ${escapeHtml(error.message)}</div>`;return;} window.MQ_SURAHS=data||[]; renderSurahs(window.MQ_SURAHS); }
