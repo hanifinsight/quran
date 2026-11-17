@@ -203,11 +203,66 @@
   function renderGames(){
     const el=$("#games");if(!el)return;
     if(!selectedGameType){
-      el.innerHTML=`<div class="section-head"><div><p class="eyebrow">BELAJAR DENGAN SERU</p><h1>Permainan Hafalan</h1><p class="muted">Pilih permainan untuk memulai tantangan.</p></div></div><div class="game-type-grid"><button class="game-type-card" data-game-type="ayah_gap"><span class="game-type-icon">▤</span><strong>Ayat Rumpang</strong><small>Lengkapi kata yang hilang.</small></button><button class="game-type-card" data-game-type="guess_surah"><span class="game-type-icon">۞</span><strong>Tebak Surah</strong><small>Kenali nama surah dari ayat.</small></button><button class="game-type-card" data-game-type="guess_juz"><span class="game-type-icon">30</span><strong>Tebak Juz</strong><small>Tentukan juz tempat ayat berada.</small></button></div>`;return;
+      el.innerHTML=`<div class="section-head"><div><p class="eyebrow">BELAJAR DENGAN SERU</p><h1>Permainan Hafalan</h1><p class="muted">Pilih tujuan latihanmu.</p></div></div><div class="game-type-grid"><button class="game-type-card learning-mode-card" data-learning-mode="read"><span class="game-type-icon">📖</span><strong>Belajar Hafalan</strong><small>Baca, dengarkan, dan pelajari ayat secara bertahap.</small></button><button class="game-type-card" data-learning-mode="test"><span class="game-type-icon">🧠</span><strong>Uji Hafalan</strong><small>Uji ingatan dengan tantangan ayat.</small></button></div>`;
+      return;
+    }
+    if(selectedGameType==="learn_read"){
+      renderLearningSetup(el);
+      return;
+    }
+    if(selectedGameType==="test_menu"){
+      el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Kembali</button><p class="eyebrow">UJI HAFALAN</p><h1>Pilih tantangan</h1><p class="muted">Pilih mekanisme uji hafalan yang ingin dimainkan.</p></div></div><div class="game-type-grid"><button class="game-type-card" data-game-type="ayah_gap"><span class="game-type-icon">▤</span><strong>Ayat Rumpang</strong><small>Lengkapi kata yang hilang.</small></button><button class="game-type-card" data-game-type="guess_surah"><span class="game-type-icon">۞</span><strong>Tebak Surah</strong><small>Kenali nama surah dari ayat.</small></button><button class="game-type-card" data-game-type="guess_juz"><span class="game-type-icon">30</span><strong>Tebak Juz</strong><small>Tentukan juz tempat ayat berada.</small></button></div>`;
+      return;
     }
     const titles={ayah_gap:"Ayat Rumpang",guess_surah:"Tebak Surah",guess_juz:"Tebak Juz"},surahs=window.MQ_SURAHS||[];
     el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Semua permainan</button><p class="eyebrow">MODE PERMAINAN</p><h1>${titles[selectedGameType]}</h1><p class="muted">Cakupan latihan opsional. Kamu bisa langsung mulai dari seluruh Al-Qur'an.</p></div></div><div class="panel game-setup game-setup-detail"><label>Cakupan latihan<select id="gameScope"><option value="all" ${gameScope==="all"?"selected":""}>Seluruh Al-Qur'an</option><option value="surah" ${gameScope==="surah"?"selected":""}>Pilih Surah</option><option value="juz" ${gameScope==="juz"?"selected":""}>Pilih Juz</option></select></label><label id="gameSurahField" ${gameScope!=="surah"?"hidden":""}>Pilih surah<select id="gameSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label><label id="gameJuzField" ${gameScope!=="juz"?"hidden":""}>Pilih juz<select id="gameJuz">${Array.from({length:30},(_,i)=>`<option value="${i+1}">Juz ${i+1}</option>`).join("")}</select></label><button class="primary-button" id="startGame" ${!currentUser?"disabled":""}>Mulai permainan →</button><p class="muted game-note">Default seluruh Al-Qur'an. Satu sesi hingga 5 soal.</p></div><div id="gameStage"></div>`;
     if(!surahs.length&&client)loadSurahs();
+  }
+  let learningState={rows:[],index:0,learned:new Set(),scope:"all",audioUrl:null};
+  function renderLearningSetup(el){
+    const surahs=window.MQ_SURAHS||[];
+    el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Kembali</button><p class="eyebrow">BELAJAR HAFALAN</p><h1>Baca dan Dengarkan</h1><p class="muted">Pelajari ayat dengan membaca teks, memahami terjemahan, dan mendengarkan murottal.</p></div></div><div class="panel game-setup"><label>Materi<select id="learnScope"><option value="all">Seluruh Al-Qur'an</option><option value="surah">Pilih Surah</option><option value="juz">Pilih Juz</option></select></label><label id="learnSurahField" hidden>Pilih surah<select id="learnSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label><label id="learnJuzField" hidden>Pilih juz<select id="learnJuz">${Array.from({length:30},(_,i)=>`<option value="${i+1}">Juz ${i+1}</option>`).join("")}</select></label><button class="primary-button" id="startLearning">Mulai belajar →</button><p class="muted game-note">Materi mengikuti nomor juz pada setiap ayat. Juz 1 berisi Al-Baqarah ayat 1–141.</p></div><div id="learningStage"></div>`;
+    if(!surahs.length&&client)loadSurahs();
+  }
+  async function startLearning(){
+    const scope=$("#learnScope")?.value||"all",surahId=Number($("#learnSurah")?.value),juz=Number($("#learnJuz")?.value),stage=$("#learningStage");
+    if(!stage)return;
+    stage.innerHTML='<div class="panel loading">Memuat materi ayat...</div>';
+    let rows=[],from=0,step=500,done=false;
+    while(!done){
+      let query=client.from("ayahs").select("surah_id,ayah_number,juz_number,text_uthmani,text_simple").eq("verified",true).order("surah_id").order("ayah_number").range(from,from+step-1);
+      if(scope==="surah")query=query.eq("surah_id",surahId);
+      if(scope==="juz")query=query.eq("juz_number",juz);
+      const {data,error}=await query;
+      if(error){stage.innerHTML=`<div class="panel loading">Gagal memuat ayat: ${escapeHtml(error.message)}</div>`;return;}
+      rows=rows.concat(data||[]);
+      done=!data||data.length<step;
+      from+=step;
+    }
+    if(!rows.length){stage.innerHTML='<div class="panel loading">Materi ayat tidak ditemukan.</div>';return;}
+    const names=new Map((window.MQ_SURAHS||[]).map(s=>[Number(s.id),s.name_latin]));
+    learningState={rows,index:0,learned:new Set(),scope,audioUrl:null,names};
+    renderLearningAyah();
+  }
+  function renderLearningAyah(){
+    const stage=$("#learningStage"),a=learningState.rows[learningState.index];if(!stage||!a)return;
+    const total=learningState.rows.length,done=learningState.learned.size;
+    const name=learningState.names?.get(Number(a.surah_id))||("Surah "+a.surah_id);
+    stage.innerHTML=`<article class="panel learning-ayah-card"><div class="learning-topline"><span>${name} · Ayat ${a.ayah_number} · Juz ${a.juz_number}</span><span>${done} / ${total} dipelajari</span></div><div class="game-progress-track"><i style="width:${Math.round((learningState.index+1)/total*100)}%"></i></div><p class="learning-arabic" lang="ar" dir="rtl">${escapeHtml(a.text_uthmani)}</p><div class="learning-translation"><span class="eyebrow">TERJEMAHAN</span><p>${escapeHtml(a.text_simple||"Terjemahan belum tersedia pada data ayat ini.")}</p></div><div class="learning-audio"><button class="secondary-button" id="playAyahAudio">▶ Dengarkan ayat</button><span id="audioStatus" class="muted">Murottal per ayat · Mishary Alafasy</span><audio id="learningAudio" controls preload="none" hidden></audio></div><div class="learning-actions"><button class="secondary-button" id="prevLearning" ${learningState.index===0?"disabled":""}>← Sebelumnya</button><button class="primary-button" id="markLearned">${learningState.learned.has(learningState.index)?"✓ Sudah dipelajari":"Tandai dipelajari"}</button><button class="secondary-button" id="nextLearning" ${learningState.index===total-1?"disabled":""}>Berikutnya →</button></div></article>`;
+  }
+  async function playLearningAudio(){
+    const a=learningState.rows[learningState.index],status=$("#audioStatus"),audio=$("#learningAudio"),button=$("#playAyahAudio");
+    if(!a||!status||!audio)return;
+    button.disabled=true;status.textContent="Menyiapkan audio...";
+    try{
+      const response=await fetch(`https://quranapi.pages.dev/api/audio/${a.surah_id}/${a.ayah_number}.json`);
+      if(!response.ok)throw new Error("Layanan audio tidak merespons.");
+      const data=await response.json(),recitation=data["1"];
+      if(!recitation?.url)throw new Error("Audio ayat belum tersedia.");
+      audio.src=recitation.url;audio.hidden=false;audio.load();
+      await audio.play();status.textContent=recitation.reciter||"Mishary Alafasy";
+    }catch(error){status.textContent="Audio gagal diputar. Periksa koneksi lalu coba lagi.";console.error(error);}
+    finally{button.disabled=false;}
   }
   async function startGame(){
     if(!currentUser){openAuth("login");return;}
@@ -303,9 +358,17 @@
 
 
   document.addEventListener("click",e=>{
+    const mode=e.target.closest("[data-learning-mode]");
+    if(mode){selectedGameType=mode.dataset.learningMode==="read"?"learn_read":"test_menu";gameScope="all";renderGames();return;}
     const card=e.target.closest("[data-game-type]");
     if(card){selectedGameType=card.dataset.gameType;gameScope="all";renderGames();return;}
     if(e.target.closest("#backToGames")){selectedGameType=null;renderGames();return;}
+    if(e.target.closest("#learnScope")){const scope=$("#learnScope").value;$("#learnSurahField").hidden=scope!=="surah";$("#learnJuzField").hidden=scope!=="juz";return;}
+    if(e.target.closest("#startLearning")){startLearning();return;}
+    if(e.target.closest("#playAyahAudio")){playLearningAudio();return;}
+    if(e.target.closest("#markLearned")){learningState.learned.add(learningState.index);renderLearningAyah();return;}
+    if(e.target.closest("#prevLearning")){if(learningState.index>0){learningState.index--;renderLearningAyah();}return;}
+    if(e.target.closest("#nextLearning")){if(learningState.index<learningState.rows.length-1){learningState.index++;renderLearningAyah();}return;}
     if(e.target.closest("#gameScope")){gameScope=$("#gameScope").value;$("#gameSurahField").hidden=gameScope!=="surah";$("#gameJuzField").hidden=gameScope!=="juz";return;}if(e.target.closest("#startGame")){startGame();return;}
     const answer=e.target.closest(".game-option[data-answer]");
     if(answer)chooseGameAnswer(Number(answer.dataset.answer));
