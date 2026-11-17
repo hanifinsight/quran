@@ -300,7 +300,7 @@
     }}
     const challenge=tileAdventureState.challenge;
     el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Kembali</button><p class="eyebrow">PETUALANGAN BARU</p><h1>Tile Adventure</h1><p class="muted">Selesaikan tantangan untuk mendapatkan tile, lalu kembangkan peta dengan menyambungkan sisi yang cocok.</p></div></div>
-      <div class="ta-stats"><div><small>Tile terpasang</small><strong>${tiles.length}</strong></div><div><small>Inventaris</small><strong>${inventory.length}</strong></div><div><small>Skor petualangan</small><strong>${Number(run.score)||0}</strong></div></div>
+      <div class="ta-stats"><div><small>Tile terpasang</small><strong>${tiles.length}</strong></div><div><small>Inventaris</small><strong>${inventory.length}</strong></div><div><small>XP petualangan</small><strong>${Number(run.xp_earned)||0}</strong></div></div>
       <div class="ta-layout"><section class="panel ta-board-panel"><div class="panel-heading"><div><p class="eyebrow">PETA PRIBADI</p><h2>Bangun wilayahmu</h2></div><span class="pill">Tahap 1 · Solo</span></div><div class="ta-board-scroll"><div class="ta-board">${grid.join("")}</div></div><div class="ta-legend"><span><i class="road"></i> Jalur</span><span><i class="field"></i> Wilayah</span><span>＋ Posisi yang dapat dipilih</span></div><p class="muted ta-hint">${selected?"Pilih posisi bertanda +. Putar tile sebelum memasangnya jika diperlukan.":"Pilih tile dari inventaris untuk melihat posisi yang cocok."}</p></section>
       <aside class="ta-side"><section class="panel"><p class="eyebrow">INVENTARIS TILE</p><h2>Tile milikmu</h2><div class="ta-inventory">${inventory.length?inventory.map(t=>`<button class="ta-inventory-item ${selected?.id===t.id?"active":""}" data-ta-select="${escapeHtml(t.id)}">${tileCellMarkup(t,true)}<span>${escapeHtml(t.name|| (t.kind==="road"?"Jalur":t.kind==="cross"?"Persimpangan":"Padang"))}</span></button>`).join(""):'<p class="muted">Belum ada tile. Selesaikan tantangan untuk mendapatkannya.</p>'}</div>${selected?`<div class="ta-selected-controls"><p class="muted">Tile dipilih · Rotasi ${tileAdventureState.rotation*90}°</p><button class="secondary-button" id="taRotate">↻ Putar tile</button></div>`:""}</section>
       <section class="panel ta-challenge"><p class="eyebrow">CARI TILE BARU</p><h2>Tantangan murojaah</h2>${challenge?`<p class="muted">Ayat berikutnya yang benar adalah...</p><p class="ta-question-ar" lang="ar" dir="rtl">${escapeHtml(challenge.prompt)}</p><div class="ta-choices">${challenge.choices.map((v,i)=>`<button class="secondary-button ta-answer" data-ta-answer="${i}" ${challenge.answered!==undefined?"disabled":""}>${escapeHtml(v)}</button>`).join("")}</div>${challenge.answered!==undefined?`<p class="ta-feedback ${challenge.answered?"correct":"wrong"}">${challenge.answered?"Benar! Kamu mendapatkan satu tile.":"Belum tepat. Jawaban benar: "+escapeHtml(challenge.correct)}</p><button class="primary-button" id="taNextChallenge">${challenge.answered?"Tantangan berikutnya":"Coba tantangan lain"}</button>`:""}`:'<p class="muted">Selesaikan tantangan sambung ayat untuk mendapatkan tile baru.</p><button class="primary-button" id="taStartChallenge">Mulai tantangan</button>'}</section></aside></div>`;
@@ -328,6 +328,16 @@
       const run=tileAdventureState.run;
       run.inventory=[...(run.inventory||[]),{id:"tile-"+crypto.randomUUID(),kind:pattern.kind,name:pattern.name,edges:pattern.edges,rotation:0}];
       run.score=(Number(run.score)||0)+10;
+      run.xp_earned=(Number(run.xp_earned)||0)+10;
+      const {data:reward}=await client.from("user_rewards").select("total_xp,current_streak,longest_streak,last_activity_date").eq("user_id",currentUser.id).maybeSingle();
+      const today=new Date().toISOString().slice(0,10),nextTotal=Number(reward?.total_xp||0)+10;
+      const nextStreak=reward?.last_activity_date===today?Number(reward.current_streak||1):Number(reward?.current_streak||0)+1;
+      const {error:xpError}=await client.from("user_rewards").upsert({user_id:currentUser.id,total_xp:nextTotal,current_streak:nextStreak,longest_streak:Math.max(Number(reward?.longest_streak||0),nextStreak),last_activity_date:today,updated_at:new Date().toISOString()});
+      if(!xpError){
+        const {data:badges}=await client.from("badges").select("id").not("xp_threshold","is",null).lte("xp_threshold",nextTotal);
+        if(badges?.length)await client.from("user_badges").upsert(badges.map(b=>({user_id:currentUser.id,badge_id:b.id})),{onConflict:"user_id,badge_id",ignoreDuplicates:true});
+        loadRewardSummary();
+      }
       await saveTileAdventure();
     }
     renderTileAdventure();
