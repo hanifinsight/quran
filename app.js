@@ -402,7 +402,8 @@
   }
   async function finishGame(){
     const stage=$("#gameStage"),answers=gameState.answers,total=answers.length,correct=answers.filter(a=>a.correct).length;
-    const score=Math.round(correct/total*100),xp=correct*10;\n    stage.innerHTML='<div class="panel loading">Menyimpan hasil latihan...</div>';
+    const score=Math.round(correct/total*100),xp=correct*10;
+    stage.innerHTML='<div class="panel loading">Menyimpan hasil latihan...</div>';
     const first=answers[0]?.q.ayah;
     const {data:session,error:sessionError}=await client.from("review_sessions").insert({
       user_id:currentUser.id,surah_id:gameState.surah,juz_number:gameState.juz,scope_type:gameState.scope,start_ayah:Math.min(...answers.map(a=>a.q.ayah.ayah_number)),
