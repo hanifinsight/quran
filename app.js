@@ -51,7 +51,15 @@
     renderDashboard();
   }
   function openAuth(mode="login") {
-    authMode = mode; $("#authOverlay").hidden = false; $("#authMessage").textContent = ""; $("#authForm").hidden = mode === "account";
+    authMode = mode;
+    $("#authOverlay").hidden = false;
+    $("#authOverlay").setAttribute("aria-hidden", "false");
+    $("#authMessage").textContent = "";
+    $("#authForm").hidden = mode === "account";
+    requestAnimationFrame(() => {
+      const focusTarget = mode === "account" ? $("#authClose") : $("#authEmail");
+      focusTarget?.focus();
+    });
     $("#authTitle").textContent = mode === "signup" ? "Buat akun baru" : mode === "account" ? "Akun Anda" : "Masuk ke akun";
     $("#authDescription").textContent = mode === "signup" ? "Daftar untuk mulai menyimpan hafalan pribadi." : mode === "account" ? `Sedang masuk sebagai ${currentUser?.email || ""}` : "Masuk untuk menyimpan hafalan dan progres pribadi.";
     $("#nameField").hidden = mode !== "signup";
@@ -61,10 +69,20 @@
     $("#authSwitch").textContent = mode === "signup" ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar";
     $("#authLogout").hidden = mode !== "account";
   }
-  function closeAuth(){ $("#authOverlay").hidden = true; pendingPage = null; }
+  function closeAuth(){
+    $("#authOverlay").hidden = true;
+    $("#authOverlay").setAttribute("aria-hidden", "true");
+    pendingPage = null;
+  }
   $("#authClose").addEventListener("click", closeAuth);
   $("#topLogin").addEventListener("click", (event) => { event.preventDefault(); openAuth("login"); });
-  $("#publicQuran").addEventListener("click", () => showPage("quran"));
+  $("#publicQuran").addEventListener("click", (event) => {
+    event.preventDefault();
+    if (!$("#surahList")) renderQuranHome();
+    showPage("quran");
+    if (client && (!window.MQ_SURAHS || !window.MQ_SURAHS.length)) loadSurahs();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
   $("#topAvatar").addEventListener("click", () => openAuth(currentUser ? "account" : "login"));
   async function doLogout(){ if(!client || !currentUser) return; if(!confirm("Keluar dari akun Murojaah Quest?")) return; const {error}=await client.auth.signOut(); if(error){ $("#authMessage").textContent=error.message; openAuth("account"); return; } closeAuth(); showPage("dashboard"); }
   $("#topLogout").addEventListener("click", doLogout);
