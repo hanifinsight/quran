@@ -245,3 +245,44 @@ body.guest-mode footer{margin-top:44px}
 .game-option.correct .game-option-letter{background:#d8f0df;color:#17643b}
 .game-option.wrong .game-option-letter{background:#fce2df;color:#a12c24}
 @media(max-width:640px){.gap-context-arabic{padding:14px 10px;line-height:1.9}.game-option.game-option-text{grid-template-columns:26px minmax(0,1fr);padding:10px}.game-option-content{font-size:22px}}
+
+
+/* Feedback jawaban Ayat Rumpang harus langsung terlihat */
+.gap-quiz .game-option.game-option-text{transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.gap-quiz .game-option.game-option-text.wrong{
+  background:#ffe1df!important;
+  border:3px solid #d92d20!important;
+  color:#8f1711!important;
+  box-shadow:0 0 0 4px rgba(217,45,32,.16),0 6px 18px rgba(160,25,20,.12)!important;
+  transform:scale(1.012);
+}
+.gap-quiz .game-option.game-option-text.wrong .game-option-letter{
+  background:#c5221f!important;color:#fff!important;width:32px;height:32px;font-size:14px;
+}
+.gap-quiz .game-option.game-option-text.wrong .game-option-content{color:#8f1711!important}
+.gap-quiz .game-option.game-option-text.wrong::after{
+  content:"✕ JAWABAN KURANG TEPAT";
+  grid-column:2;
+  justify-self:start;
+  direction:ltr;
+  font:800 11px/1.3 Arial,sans-serif;
+  letter-spacing:.6px;
+  color:#b42318;
+  background:#fff4f2;
+  border-radius:6px;
+  padding:5px 8px;
+  margin-top:5px;
+}
+.gap-quiz .game-option.game-option-text.correct{
+  background:#e1f5e8!important;border:3px solid #16834a!important;
+  box-shadow:0 0 0 3px rgba(22,131,74,.12)!important;
+}
+.gap-quiz .game-option.game-option-text.correct .game-option-letter{background:#16834a!important;color:#fff!important}
+.gap-quiz .game-option.game-option-text.correct::after{
+  content:"✓ JAWABAN BENAR";
+  grid-column:2;justify-self:start;direction:ltr;
+  font:800 11px/1.3 Arial,sans-serif;letter-spacing:.6px;color:#17643b;
+  background:#f1fbf4;border-radius:6px;padding:5px 8px;margin-top:5px;
+}
+.gap-quiz .game-option.game-option-text:disabled{opacity:1;cursor:default}
+@media(max-width:640px){.gap-quiz .game-option.game-option-text.wrong,.gap-quiz .game-option.game-option-text.correct{transform:none}}
