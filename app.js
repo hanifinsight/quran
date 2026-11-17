@@ -289,15 +289,15 @@
   function renderTileAdventure(el=$("#games")){
     const run=tileAdventureState.run;if(!el||!run)return;
     const tiles=run.board_state?.tiles||[],inventory=run.inventory||[];
+    const selected=inventory.find(t=>t.id===tileAdventureState.selectedTile);
     const min=-4,max=4,grid=[];
     for(let y=min;y<=max;y++){for(let x=min;x<=max;x++){
       const tile=tileAt(tiles,x,y);
-      const can= !tile && [0,1,2,3].some(rot=>validTilePlacement(tiles,x,y,rotateEdges(tileAdventureState.selectedTile?.edges||{},rot)));
+      const can= !tile && [0,1,2,3].some(rot=>validTilePlacement(tiles,x,y,rotateEdges(selected?.edges||{},rot)));
       grid.push(tile?`<div class="ta-cell occupied" title="Tile terpasang">${tileCellMarkup(tile,true)}</div>`:
         can?`<button class="ta-cell placeable ${tileAdventureState.selectedTile?"selected-target":""}" data-ta-place="${x},${y}" aria-label="Pasang tile di ${x}, ${y}"><span>＋</span></button>`:
         '<div class="ta-cell"></div>');
     }}
-    const selected=inventory.find(t=>t.id===tileAdventureState.selectedTile);
     const challenge=tileAdventureState.challenge;
     el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Kembali</button><p class="eyebrow">PETUALANGAN BARU</p><h1>Tile Adventure</h1><p class="muted">Selesaikan tantangan untuk mendapatkan tile, lalu kembangkan peta dengan menyambungkan sisi yang cocok.</p></div></div>
       <div class="ta-stats"><div><small>Tile terpasang</small><strong>${tiles.length}</strong></div><div><small>Inventaris</small><strong>${inventory.length}</strong></div><div><small>Skor petualangan</small><strong>${Number(run.score)||0}</strong></div></div>
@@ -307,17 +307,16 @@
   }
   async function startTileChallenge(){
     const el=$("#games");if(!el||tileAdventureState.loading)return;tileAdventureState.loading=true;
-    const {data,error}=await client.from("ayahs").select("surah_id,ayah_number,text_uthmani").eq("verified",true).order("surah_id").order("ayah_number").limit(5000);
+    const surahId=1+Math.floor(Math.random()*114);
+    const {data,error}=await client.from("ayahs").select("surah_id,ayah_number,text_uthmani").eq("verified",true).eq("surah_id",surahId).order("ayah_number");
     tileAdventureState.loading=false;
-    if(error||!data?.length){alert("Data ayat belum dapat dimuat.");return;}
-    const bySurah=new Map();for(const a of data){if(!bySurah.has(Number(a.surah_id)))bySurah.set(Number(a.surah_id),[]);bySurah.get(Number(a.surah_id)).push(a);}
-    const groups=[...bySurah.values()].filter(g=>g.length>=3);
-    const group=groups[Math.floor(Math.random()*groups.length)];
-    const idx=Math.floor(Math.random()*(group.length-1));
-    const prompt=group[idx].text_uthmani;
-    const correct=group[idx+1].text_uthmani;
-    const distractors=data.filter(a=>Number(a.surah_id)!==Number(group[idx].surah_id)).sort(()=>Math.random()-.5).slice(0,3).map(a=>a.text_uthmani);
-    const choices=[correct,...distractors].sort(()=>Math.random()-.5);
+    if(error||!data||data.length<3){alert("Ayat untuk tantangan belum tersedia. Silakan coba lagi.");return;}
+    const idx=Math.floor(Math.random()*(data.length-1));
+    const prompt=data[idx].text_uthmani,correct=data[idx+1].text_uthmani;
+    const candidates=data.filter((a,i)=>i!==idx+1).map(a=>a.text_uthmani);
+    for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
+    const choices=[correct,...candidates.slice(0,3)];
+    for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
     tileAdventureState.challenge={prompt,correct,choices,answered:undefined};
     renderTileAdventure(el);
   }
