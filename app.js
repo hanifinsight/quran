@@ -262,5 +262,5 @@
     const answer=e.target.closest(".game-option[data-answer]");
     if(answer) chooseGameAnswer(Number(answer.dataset.answer));
   });
-\n  function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 })();
