@@ -8,19 +8,39 @@
   let client = null, currentUser = null, authMode = "login", pendingPage = null;
 
   function showPage(id) {
-    if (["hafalan", "murojaah", "games", "pencapaian"].includes(id) && !currentUser) { pendingPage = id; openAuth("login"); return; }
+    const target = document.getElementById(id);
+    if (!target || !target.classList.contains("page")) id = "dashboard";
+    if (["hafalan", "murojaah", "games", "pencapaian"].includes(id) && !currentUser) {
+      pendingPage = id;
+      $("#sidebar").classList.remove("open");
+      openAuth("login");
+      $("#authMessage").textContent = "Silakan masuk untuk membuka fitur " + ({hafalan:"Hafalan Saya",murojaah:"Jadwal Murojaah",games:"Permainan",pencapaian:"Pencapaian"}[id]) + ".";
+      return;
+    }
     pages.forEach(p => p.classList.toggle("active-page", p.id === id));
-    navLinks.forEach(a => a.classList.toggle("active", a.dataset.page === id));
-    $("#pageTitle").textContent = ({dashboard:"Dashboard",quran:"Al-Qur'an",hafalan:"Hafalan Saya",murojaah:"Jadwal Murojaah",games:"Permainan",pencapaian:"Pencapaian"})[id] || "Dashboard";
-    $("#sidebar").classList.remove("open");
+    navLinks.forEach(a => {
+      const active = a.dataset.page === id;
+      a.classList.toggle("active", active);
+      if (active) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+    const title = $("#pageTitle");
+    if (title) title.textContent = ({dashboard:"Dashboard",quran:"Al-Qur'an",hafalan:"Hafalan Saya",murojaah:"Jadwal Murojaah",games:"Permainan",pencapaian:"Pencapaian"})[id] || "Dashboard";
+    $("#sidebar")?.classList.remove("open");
     if (id === "quran" && !$("#surahList")) renderQuranHome();
-    location.hash = id;
+    if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
   }
-  navLinks.forEach(a => a.addEventListener("click", e => { e.preventDefault(); showPage(a.dataset.page); }));
+  // Delegasi klik membuat seluruh item navigasi tetap responsif, termasuk setelah render ulang.
+  document.addEventListener("click", e => {
+    const link = e.target.closest(".nav-link[data-page]");
+    if (!link) return;
+    e.preventDefault();
+    showPage(link.dataset.page);
+  });
   $("#menuButton").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
 
   function updateAuthUI() {
     const name = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "Pengguna";
+    document.body.classList.toggle("guest-mode", !currentUser);
     const profile = $("#profileButton");
     profile.innerHTML = `<span class="avatar">${escapeHtml(name.slice(0,1).toUpperCase())}</span><span><b>${escapeHtml(name)}</b><small>${currentUser ? "Akun aktif · Kelola akun" : "Mode pengunjung · Masuk"}</small></span><span class="dots">···</span>`;
     profile.onclick = () => openAuth(currentUser ? "account" : "login");
@@ -39,7 +59,7 @@
     $("#authSwitch").textContent = mode === "signup" ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar";
     $("#authLogout").hidden = mode !== "account";
   }
-  function closeAuth(){ $("#authOverlay").hidden = true; }
+  function closeAuth(){ $("#authOverlay").hidden = true; pendingPage = null; }
   $("#authClose").addEventListener("click", closeAuth);
   $("#topLogin").addEventListener("click", () => openAuth("login"));
   $("#topAvatar").addEventListener("click", () => openAuth(currentUser ? "account" : "login"));
@@ -60,9 +80,13 @@
         if(data.session){ $("#authMessage").textContent="Pendaftaran berhasil dan Anda sudah masuk."; }
         else { $("#authMessage").textContent="Pendaftaran berhasil. Periksa email untuk konfirmasi, lalu masuk."; }
       } else {
-        const {error}=await client.auth.signInWithPassword({email,password}); if(error) throw error;
+        const {data,error}=await client.auth.signInWithPassword({email,password}); if(error) throw error;
+        currentUser = data.user || data.session?.user || null;
+        updateAuthUI();
+        const destination = pendingPage || "dashboard";
         closeAuth();
-        if (pendingPage) { const destination=pendingPage; pendingPage=null; showPage(destination); }
+        pendingPage = null;
+        showPage(destination);
       }
     } catch(err) { $("#authMessage").textContent=err.message || "Terjadi kesalahan."; }
     finally { submit.disabled=false; submit.textContent=authMode === "signup" ? "Daftar" : "Masuk"; }
