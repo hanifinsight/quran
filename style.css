@@ -304,3 +304,19 @@ body.guest-mode footer{margin-top:44px}
 .gap-quiz .game-option-content{display:block;direction:rtl;text-align:justify;font-family:"Traditional Arabic","Noto Naskh Arabic",serif;font-size:clamp(20px,2.2vw,27px);line-height:1.95;white-space:normal;overflow-wrap:anywhere}
 .gap-quiz .game-option-letter{margin-top:4px}
 @media(max-width:700px){.gap-quiz .game-options{grid-template-columns:1fr}.gap-quran-page{padding:18px 14px;font-size:27px;line-height:2.15;word-spacing:2px}.gap-page-missing{min-width:4.8em}.gap-quiz .game-option.game-option-text{min-height:90px}}
+
+
+/* Area kosong tanpa label atau tanda, menyatu dengan aliran teks mushaf */
+.gap-quran-page .gap-page-empty{
+  display:inline-block;
+  vertical-align:middle;
+  width:5.8em;
+  height:1.65em;
+  margin:0 .08em;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+@media(max-width:700px){
+  .gap-quran-page .gap-page-empty{width:4.5em;height:1.45em;margin:0 .04em}
+}
