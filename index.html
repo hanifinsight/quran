@@ -70,6 +70,24 @@
     <section class="page" id="pencapaian"><div class="section-head"><div><p class="eyebrow">APRESIASI PROSES</p><h1>Pencapaian</h1><p class="muted">XP, level, streak, dan badge akan mengikuti konsistensimu.</p></div></div><div class="panel empty-state"><div class="empty-icon">☆</div><h3>Setiap langkah berarti</h3><p>Pencapaian pertamamu akan tercatat setelah aktivitas hafalan tersedia.</p></div></section>
     <footer>© 2026 Murojaah Quest · Dibuat untuk menemani perjalanan menjaga hafalan.</footer>
   </main>
+
+  <div class="auth-overlay" id="authOverlay" hidden>
+    <section class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <button class="auth-close" id="authClose" aria-label="Tutup">×</button>
+      <p class="eyebrow">MUROJAAH QUEST</p>
+      <h2 id="authTitle">Masuk ke akun</h2>
+      <p class="muted" id="authDescription">Masuk untuk menyimpan hafalan dan progres pribadi.</p>
+      <form id="authForm">
+        <label id="nameField" hidden>Nama tampilan<input id="authName" type="text" autocomplete="name" placeholder="Nama Anda"></label>
+        <label>Email<input id="authEmail" type="email" autocomplete="email" required placeholder="nama@email.com"></label>
+        <label>Password<input id="authPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="Minimal 6 karakter"></label>
+        <button class="primary-button auth-submit" id="authSubmit" type="submit">Masuk</button>
+      </form>
+      <p class="auth-message" id="authMessage" aria-live="polite"></p>
+      <button class="auth-switch" id="authSwitch" type="button">Belum punya akun? Daftar</button>
+      <button class="auth-logout" id="authLogout" type="button" hidden>Keluar dari akun</button>
+    </section>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./config.js"></script>
   <script src="./app.js"></script>
