@@ -175,3 +175,17 @@ body.guest-mode footer{margin-top:44px}
 .game-option.game-option-text{font-family:inherit;font-size:16px;line-height:1.5;text-align:center;min-height:54px;font-weight:650}
 
 .game-setup-detail{grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}.game-setup-detail>label{display:grid;gap:8px;font-size:12px;font-weight:700;color:#53665b}.game-setup-detail select{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;color:var(--ink)}.game-back{border:0;background:transparent;color:var(--green2);font-weight:700;padding:0 0 14px;cursor:pointer}.game-detail-head{margin-bottom:18px}@media(max-width:760px){.game-setup-detail{grid-template-columns:1fr}}
+
+
+/* Mode belajar dan pembaca ayat */
+.learning-mode-card{border-color:#b9d7c6;background:linear-gradient(145deg,#f4faf6,#fff)}
+.learning-ayah-card{margin-top:18px}
+.learning-topline{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;margin-bottom:14px}
+.learning-arabic{font-family:"Traditional Arabic", "Noto Naskh Arabic",serif;font-size:clamp(30px,4vw,42px);line-height:2.15;text-align:center;color:#173f32;padding:24px 12px;margin:18px 0;background:#f8faf8;border:1px solid var(--line);border-radius:14px}
+.learning-translation{border-top:1px solid var(--line);padding:16px 4px 4px;line-height:1.8}
+.learning-translation p{font-size:14px;margin:8px 0;color:#43534a}
+.learning-audio{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0}
+.learning-audio audio{width:100%;max-width:440px}
+.learning-actions{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-top:18px}
+.learning-actions button{min-height:42px}
+@media(max-width:640px){.learning-topline{font-size:11px}.learning-actions{display:grid;grid-template-columns:1fr 1fr}.learning-actions #markLearned{grid-column:1/-1;grid-row:1}.learning-actions button{width:100%}.learning-arabic{padding:18px 8px}}
