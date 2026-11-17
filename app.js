@@ -290,14 +290,14 @@
     return pool.slice(0,5).map(a=>{
       let correct,choices=[],prompt="",display=a.text_uthmani;
       if(type==="ayah_gap"){
-        const words=a.text_uthmani.split(/\\s+/).filter(Boolean);
+        const words=a.text_uthmani.split(/\s+/).filter(Boolean);
         if(words.length<3)return null;
         const missingIndex=Math.floor(Math.random()*words.length);
         correct=words[missingIndex];
         const shown=[...words];shown[missingIndex]="ــــــ";
         display=shown.join(" ");
         // Pengecoh berasal dari kata Al-Qur'an dengan panjang visual yang mirip.
-        const candidates=[...new Set(pool.flatMap(r=>r.text_uthmani.split(/\\s+/))
+        const candidates=[...new Set(pool.flatMap(r=>r.text_uthmani.split(/\s+/))
           .filter(w=>w!==correct && Math.abs([...w].length-[...correct].length)<=2
             && !/[۞۩]/u.test(w)))];
         for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
