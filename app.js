@@ -375,10 +375,14 @@
     if(e.target.closest("#backToGames")){selectedGameType=null;renderGames();return;}
     if(e.target.closest("#learnScope")){const scope=$("#learnScope").value;$("#learnSurahField").hidden=scope!=="surah";$("#learnJuzField").hidden=scope!=="juz";return;}
     if(e.target.closest("#startLearning")){startLearning();return;}
-    if(e.target.closest("#playAyahAudio")){playLearningAudio();return;}
-    if(e.target.closest("#markLearned")){learningState.learned.add(learningState.index);renderLearningAyah();return;}
-    if(e.target.closest("#prevLearning")){if(learningState.index>0){learningState.index--;renderLearningAyah();}return;}
-    if(e.target.closest("#nextLearning")){if(learningState.index<learningState.rows.length-1){learningState.index++;renderLearningAyah();}return;}
+    const audioButton=e.target.closest("[data-audio-ayah]");
+    if(audioButton){const [sid,anum]=audioButton.dataset.audioAyah.split(":").map(Number);playLearningAudio(sid,anum,audioButton);return;}
+    if(e.target.closest("#markLearned")){
+      learningState.rows.slice(learningState.index,learningState.index+learningState.batchSize).forEach(a=>learningState.learned.add(Number(a.surah_id)+":"+Number(a.ayah_number)));
+      renderLearningAyah();return;
+    }
+    if(e.target.closest("#prevLearning")){if(learningState.index>0){learningState.index=Math.max(0,learningState.index-learningState.batchSize);renderLearningAyah();}return;}
+    if(e.target.closest("#nextLearning")){if(learningState.index+learningState.batchSize<learningState.rows.length){learningState.index+=learningState.batchSize;renderLearningAyah();}return;}
     if(e.target.closest("#gameScope")){gameScope=$("#gameScope").value;$("#gameSurahField").hidden=gameScope!=="surah";$("#gameJuzField").hidden=gameScope!=="juz";return;}if(e.target.closest("#startGame")){startGame();return;}
     const answer=e.target.closest(".game-option[data-answer]");
     if(answer)chooseGameAnswer(Number(answer.dataset.answer));
