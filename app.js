@@ -254,8 +254,9 @@
       return;
     }
     const titles={ayah_gap:"Ayat Rumpang",guess_surah:"Tebak Surah",guess_juz:"Tebak Juz"},surahs=window.MQ_SURAHS||[];
-    el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Semua permainan</button><p class="eyebrow">MODE PERMAINAN</p><h1>${titles[selectedGameType]}</h1><p class="muted">${selectedGameType==="guess_surah"?"Pilih satu juz sebagai cakupan. Tebak nama surah berdasarkan ayat di dalam juz tersebut.":"Pilih cakupan latihan sesuai kebutuhan."}</p></div></div><div class="panel game-setup game-setup-detail"><label>Cakupan latihan<select id="gameScope">${selectedGameType==="guess_surah"?"":`<option value="all" ${gameScope==="all"?"selected":""}>Seluruh Al-Qur'an</option>`}${selectedGameType!=="guess_surah"?`<option value="surah" ${gameScope==="surah"?"selected":""}>Pilih Surah</option>`:""}${selectedGameType!=="guess_juz"?`<option value="juz" ${gameScope==="juz"?"selected":""}>Pilih Juz</option>`:""}</select></label><label id="gameSurahField" ${gameScope!=="surah"?"hidden":""}>Pilih surah<select id="gameSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label><label id="gameJuzField" ${gameScope!=="juz"?"hidden":""}>Pilih juz<select id="gameJuz">${Array.from({length:30},(_,i)=>`<option value="${i+1}">Juz ${i+1}</option>`).join("")}</select></label><button class="primary-button" id="startGame" ${!currentUser?"disabled":""}>Mulai permainan →</button><p class="muted game-note">Satu sesi hingga 5 soal.</p></div><div id="gameStage"></div>`;
-    if(!surahs.length&&client)loadSurahs();
+    const scoped=selectedGameType==="ayah_gap";
+    el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Semua permainan</button><p class="eyebrow">MODE PERMAINAN</p><h1>${titles[selectedGameType]}</h1><p class="muted">${scoped?"Atur cakupan ayat yang ingin dilatih.":"Soal diambil acak dari seluruh Al-Qur'an tanpa petunjuk cakupan."}</p></div></div><div class="panel game-setup game-setup-detail">${scoped?`<label>Cakupan latihan<select id="gameScope"><option value="all" ${gameScope==="all"?"selected":""}>Seluruh Al-Qur'an</option><option value="surah" ${gameScope==="surah"?"selected":""}>Pilih Surah</option><option value="juz" ${gameScope==="juz"?"selected":""}>Pilih Juz</option></select></label><label id="gameSurahField" ${gameScope!=="surah"?"hidden":""}>Pilih surah<select id="gameSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label><label id="gameJuzField" ${gameScope!=="juz"?"hidden":""}>Pilih juz<select id="gameJuz">${Array.from({length:30},(_,i)=>`<option value="${i+1}">Juz ${i+1}</option>`).join("")}</select></label>`:`<p class="game-note">5 soal acak dari seluruh Al-Qur'an. Tebak nama surah atau nomor juz berdasarkan rangkaian ayat.</p>`}<button class="primary-button" id="startGame" ${!currentUser?"disabled":""}>Mulai permainan →</button><p class="muted game-note">Satu sesi hingga 5 soal.</p></div><div id="gameStage"></div>`;
+    if(scoped&&!surahs.length&&client)loadSurahs();
   }
   let learningState={rows:[],index:0,learned:new Set(),scope:"all",batchSize:5,audioUrl:null};
   function renderLearningSetup(el){
@@ -333,7 +334,7 @@
   }
   async function startGame(){
     if(!currentUser){openAuth("login");return;}
-    const scope=selectedGameType==="guess_surah"?"juz":($("#gameScope")?.value||"all"),surahId=Number($("#gameSurah")?.value),juz=Number($("#gameJuz")?.value),type=selectedGameType,stage=$("#gameStage");
+    const type=selectedGameType,scope=type==="ayah_gap"?($("#gameScope")?.value||"all"):"all",surahId=Number($("#gameSurah")?.value),juz=Number($("#gameJuz")?.value),stage=$("#gameStage");
     if(!stage)return;stage.innerHTML='<div class="panel loading">Menyiapkan soal...</div>';
     let query=client.from("ayahs").select("surah_id,ayah_number,juz_number,text_uthmani").eq("verified",true).order("surah_id").order("ayah_number");
     if(scope==="surah")query=query.eq("surah_id",surahId);if(scope==="juz")query=query.eq("juz_number",juz);
