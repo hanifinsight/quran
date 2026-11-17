@@ -32,6 +32,7 @@
     $("#sidebar")?.classList.remove("open");
     if (id === "quran" && !$("#surahList")) renderQuranHome();
     if (id === "games") renderGames();
+    if (id === "pencapaian") renderAchievements();
     if (id === "quran" && client && (!window.MQ_SURAHS || !window.MQ_SURAHS.length)) loadSurahs();
     if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
   }
@@ -55,6 +56,7 @@
     $("#topLogin").hidden = !!currentUser; $("#topLogout").hidden = !currentUser;
     $("#publicQuran").hidden = false;
     renderDashboard();
+    loadRewardSummary();
   }
   function openAuth(mode="login") {
     authMode = mode;
@@ -155,6 +157,36 @@
 
   if(client){ renderQuranHome(); loadSurahs(); }
 
+  async function loadRewardSummary(){
+    if(!client||!currentUser)return;
+    const {data,error}=await client.from("user_rewards").select("total_xp,current_streak,longest_streak").eq("user_id",currentUser.id).maybeSingle();
+    if(error){console.warn("Gagal memuat XP:",error.message);return;}
+    const xp=Number(data?.total_xp||0),streak=Number(data?.current_streak||0);
+    const xpNode=document.querySelector(".top-actions .xp b");
+    const streakNode=document.querySelector(".top-actions .streak b");
+    if(xpNode)xpNode.textContent=xp+" XP";
+    if(streakNode)streakNode.textContent=streak;
+    const dashboardXp=document.querySelector("#dashboard .stats-grid .stat-card:nth-child(4) strong");
+    if(dashboardXp)dashboardXp.textContent=xp;
+  }
+  async function renderAchievements(){
+    const el=$("#pencapaian");if(!el)return;
+    if(!currentUser){el.innerHTML='<div class="panel empty-state">Masuk untuk melihat pencapaian.</div>';return;}
+    el.innerHTML='<div class="panel loading">Memuat XP dan pencapaian...</div>';
+    const [{data:reward,error:rewardError},{data:badges,error:badgeError},{data:earned,error:earnedError}]=await Promise.all([
+      client.from("user_rewards").select("total_xp,current_streak,longest_streak,last_activity_date").eq("user_id",currentUser.id).maybeSingle(),
+      client.from("badges").select("id,code,title,description,xp_threshold").order("xp_threshold"),
+      client.from("user_badges").select("badge_id,earned_at").eq("user_id",currentUser.id)
+    ]);
+    if(rewardError||badgeError||earnedError){el.innerHTML='<div class="panel loading">Data pencapaian belum dapat dimuat. Coba refresh halaman.</div>';return;}
+    const xp=Number(reward?.total_xp||0),streak=Number(reward?.current_streak||0),longest=Number(reward?.longest_streak||0);
+    const earnedIds=new Set((earned||[]).map(x=>x.badge_id));
+    const badgeCards=(badges||[]).map(b=>{
+      const unlocked=earnedIds.has(b.id)|| (b.xp_threshold!=null&&xp>=Number(b.xp_threshold));
+      return `<article class="badge-card ${unlocked?"unlocked":"locked"}"><div class="badge-medal">${unlocked?"🏅":"🔒"}</div><div><strong>${escapeHtml(b.title)}</strong><p>${escapeHtml(b.description||"")}</p><small>${b.xp_threshold==null?"Pencapaian khusus":Number(b.xp_threshold)+" XP"} · ${unlocked?"Terbuka":"Belum terbuka"}</small></div></article>`;
+    }).join("");
+    el.innerHTML=`<div class="section-head"><div><p class="eyebrow">APRESIASI PROSES</p><h1>Pencapaian</h1><p class="muted">Setiap latihan menambah pengalaman dan menjaga konsistensi.</p></div></div><div class="achievement-stats"><article class="panel"><small>Total XP</small><strong>${xp}</strong></article><article class="panel"><small>Streak saat ini</small><strong>${streak} hari</strong></article><article class="panel"><small>Streak terpanjang</small><strong>${longest} hari</strong></article></div><div class="section-head achievement-heading"><div><h2>Badge</h2><p class="muted">Kumpulkan XP untuk membuka pencapaian.</p></div></div><div class="badge-grid">${badgeCards||'<div class="panel empty-state">Badge belum tersedia.</div>'}</div>`;
+  }
   function renderDashboard(){
     const el=$("#dashboard"); if(!el) return;
     const name=currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "Pengguna";
