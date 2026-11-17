@@ -403,22 +403,47 @@
       }
       return questions;
     }
-    const pool=ordered.slice();
-    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
-    return pool.slice(0,5).map(a=>{
-      let correct,choices=[],prompt="",display=a.text_uthmani;
+    const groups=[];
+    for(const ayah of ordered){
+      const sameGroup=groups[groups.length-1];
+      const sameKey=sameGroup&&Number(sameGroup[0].surah_id)===Number(ayah.surah_id)&&
+        (type!=="guess_juz"||Number(sameGroup[0].juz_number)===Number(ayah.juz_number))&&
+        Number(sameGroup[sameGroup.length-1].ayah_number)+1===Number(ayah.ayah_number);
+      if(!sameKey)groups.push([ayah]);else sameGroup.push(ayah);
+    }
+    const eligible=groups.filter(g=>g.length>=2);
+    for(let i=eligible.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[eligible[i],eligible[j]]=[eligible[j],eligible[i]];}
+    const questions=[];
+    for(const group of eligible){
+      if(questions.length>=5)break;
+      const length=Math.min(group.length,2+(Math.random()<0.35?1:0));
+      const offset=Math.floor(Math.random()*(group.length-length+1));
+      const sample=group.slice(offset,offset+length);
+      const first=sample[0];
+      let correct,choices,prompt;
       if(type==="guess_surah"){
-        const actual=surahMap.get(Number(a.surah_id));correct=actual?.name_latin;if(!correct)return null;
-        const candidates=[...surahMap.values()].filter(s=>Number(s.id)!==Number(a.surah_id)&&s.revelation_type===actual.revelation_type&&Math.abs(Number(s.ayah_count)-Number(actual.ayah_count))<=Math.max(25,Math.round(Number(actual.ayah_count)*0.6)));
-        for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
-        choices=[correct,...candidates.slice(0,3).map(s=>s.name_latin)];prompt="Perhatikan ayatnya. Dari surah manakah ayat ini berasal?";
+        const actual=surahMap.get(Number(first.surah_id));
+        if(!actual)continue;
+        correct=actual.name_latin;
+        const distractors=[...surahMap.values()]
+          .filter(x=>Number(x.id)!==Number(first.surah_id))
+          .sort(()=>Math.random()-0.5)
+          .slice(0,3).map(x=>x.name_latin);
+        choices=[correct,...distractors];
+        prompt="Baca rangkaian ayat berikut. Dari surah manakah ayat-ayat ini berasal?";
       }else{
-        correct=String(a.juz_number);const candidates=[-2,-1,1,2].map(n=>Number(correct)+n).filter(n=>n>=1&&n<=30);
-        choices=[correct,...candidates.slice(0,3).map(String)];prompt="Ayat ini berada di juz berapa?";
+        correct=String(first.juz_number);
+        if(!correct||correct==="null"||correct==="undefined")continue;
+        const distractors=Array.from({length:30},(_,i)=>String(i+1))
+          .filter(x=>x!==correct).sort(()=>Math.random()-0.5).slice(0,3);
+        choices=[correct,...distractors];
+        prompt="Rangkaian ayat ini berada di juz berapa?";
       }
       for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
-      return {ayah:a,correct,choices,prompt,kind:type,display};
-    }).filter(q=>q&&q.choices.length===4);
+      const display=sample.map(a=>a.text_uthmani+" ﴿"+a.ayah_number+"﴾").join(" ");
+      questions.push({ayah:first,correct,choices,prompt,kind:type,display});
+    }
+    return questions;
   }
   function renderGameQuestion(){
     const stage=$("#gameStage"),q=gameState.questions[gameState.index];if(!stage||!q)return;
