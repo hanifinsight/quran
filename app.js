@@ -225,14 +225,14 @@
     el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Semua permainan</button><p class="eyebrow">MODE PERMAINAN</p><h1>${titles[selectedGameType]}</h1><p class="muted">Cakupan latihan opsional. Kamu bisa langsung mulai dari seluruh Al-Qur'an.</p></div></div><div class="panel game-setup game-setup-detail"><label>Cakupan latihan<select id="gameScope"><option value="all" ${gameScope==="all"?"selected":""}>Seluruh Al-Qur'an</option>${selectedGameType!=="guess_surah"?`<option value="surah" ${gameScope==="surah"?"selected":""}>Pilih Surah</option>`:""}${selectedGameType!=="guess_juz"?`<option value="juz" ${gameScope==="juz"?"selected":""}>Pilih Juz</option>`:""}</select></label><label id="gameSurahField" ${gameScope!=="surah"?"hidden":""}>Pilih surah<select id="gameSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label><label id="gameJuzField" ${gameScope!=="juz"?"hidden":""}>Pilih juz<select id="gameJuz">${Array.from({length:30},(_,i)=>`<option value="${i+1}">Juz ${i+1}</option>`).join("")}</select></label><button class="primary-button" id="startGame" ${!currentUser?"disabled":""}>Mulai permainan →</button><p class="muted game-note">Default seluruh Al-Qur'an. Satu sesi hingga 5 soal.</p></div><div id="gameStage"></div>`;
     if(!surahs.length&&client)loadSurahs();
   }
-  let learningState={rows:[],index:0,learned:new Set(),scope:"all",audioUrl:null};
+  let learningState={rows:[],index:0,learned:new Set(),scope:"all",batchSize:5,audioUrl:null};
   function renderLearningSetup(el){
     const surahs=window.MQ_SURAHS||[];
-    el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Kembali</button><p class="eyebrow">BELAJAR HAFALAN</p><h1>Baca dan Dengarkan</h1><p class="muted">Pelajari ayat dengan membaca teks, memahami terjemahan, dan mendengarkan murottal.</p></div></div><div class="panel game-setup"><label>Materi<select id="learnScope"><option value="all">Seluruh Al-Qur'an</option><option value="surah">Pilih Surah</option><option value="juz">Pilih Juz</option></select></label><label id="learnSurahField" hidden>Pilih surah<select id="learnSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label><label id="learnJuzField" hidden>Pilih juz<select id="learnJuz">${Array.from({length:30},(_,i)=>`<option value="${i+1}">Juz ${i+1}</option>`).join("")}</select></label><button class="primary-button" id="startLearning">Mulai belajar →</button><p class="muted game-note">Materi mengikuti nomor juz pada setiap ayat. Juz 1 berisi Al-Baqarah ayat 1–141.</p></div><div id="learningStage"></div>`;
+    el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Kembali</button><p class="eyebrow">BELAJAR HAFALAN</p><h1>Baca dan Dengarkan</h1><p class="muted">Baca beberapa ayat sekaligus, dengarkan murottal, lalu tandai yang sudah dipelajari.</p></div></div><div class="panel game-setup"><label>Materi<select id="learnScope"><option value="all">Seluruh Al-Qur'an</option><option value="surah">Pilih Surah</option><option value="juz">Pilih Juz</option></select></label><label id="learnSurahField" hidden>Pilih surah<select id="learnSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label><label id="learnJuzField" hidden>Pilih juz<select id="learnJuz">${Array.from({length:30},(_,i)=>`<option value="${i+1}">Juz ${i+1}</option>`).join("")}</select></label><label>Jumlah ayat per tampilan<select id="learnBatchSize"><option value="5" selected>5 ayat</option><option value="10">10 ayat</option></select></label><button class="primary-button" id="startLearning">Mulai belajar →</button><p class="muted game-note">Materi mengikuti nomor juz pada setiap ayat.</p></div><div id="learningStage"></div>`;
     if(!surahs.length&&client)loadSurahs();
   }
   async function startLearning(){
-    const scope=$("#learnScope")?.value||"all",surahId=Number($("#learnSurah")?.value),juz=Number($("#learnJuz")?.value),stage=$("#learningStage");
+    const scope=$("#learnScope")?.value||"all",surahId=Number($("#learnSurah")?.value),juz=Number($("#learnJuz")?.value),batchSize=Number($("#learnBatchSize")?.value)||5,stage=$("#learningStage");
     if(!stage)return;
     stage.innerHTML='<div class="panel loading">Memuat materi ayat...</div>';
     let rows=[],from=0,step=500,done=false;
@@ -248,21 +248,27 @@
     }
     if(!rows.length){stage.innerHTML='<div class="panel loading">Materi ayat tidak ditemukan.</div>';return;}
     const names=new Map((window.MQ_SURAHS||[]).map(s=>[Number(s.id),s.name_latin]));
-    learningState={rows,index:0,learned:new Set(),scope,audioUrl:null,names};
+    learningState={rows,index:0,learned:new Set(),scope,batchSize,audioUrl:null,names};
     renderLearningAyah();
   }
   function renderLearningAyah(){
-    const stage=$("#learningStage"),a=learningState.rows[learningState.index];if(!stage||!a)return;
-    const total=learningState.rows.length,done=learningState.learned.size;
-    const name=learningState.names?.get(Number(a.surah_id))||("Surah "+a.surah_id);
-    stage.innerHTML=`<article class="panel learning-ayah-card"><div class="learning-topline"><span>${name} · Ayat ${a.ayah_number} · Juz ${a.juz_number}</span><span>${done} / ${total} dipelajari</span></div><div class="game-progress-track"><i style="width:${Math.round((learningState.index+1)/total*100)}%"></i></div><p class="learning-arabic" lang="ar" dir="rtl">${escapeHtml(a.text_uthmani)}</p><div class="learning-translation"><span class="eyebrow">TEKS ARAB SEDERHANA</span><p lang="ar" dir="rtl">${escapeHtml(a.text_simple||"Belum tersedia pada data ayat ini.")}</p></div><div class="learning-audio"><button class="secondary-button" id="playAyahAudio">▶ Dengarkan ayat</button><span id="audioStatus" class="muted">Murottal per ayat · Mishary Alafasy</span><audio id="learningAudio" controls preload="none" hidden></audio></div><div class="learning-actions"><button class="secondary-button" id="prevLearning" ${learningState.index===0?"disabled":""}>← Sebelumnya</button><button class="primary-button" id="markLearned">${learningState.learned.has(learningState.index)?"✓ Sudah dipelajari":"Tandai dipelajari"}</button><button class="secondary-button" id="nextLearning" ${learningState.index===total-1?"disabled":""}>Berikutnya →</button></div></article>`;
+    const stage=$("#learningStage");if(!stage)return;
+    const {rows,index,batchSize,learned}=learningState,total=rows.length,visible=rows.slice(index,Math.min(index+batchSize,total));
+    if(!visible.length)return;
+    const first=visible[0],last=visible[visible.length-1],done=learned.size;
+    const cards=visible.map(a=>{
+      const name=learningState.names?.get(Number(a.surah_id))||("Surah "+a.surah_id);
+      const key=Number(a.surah_id)+":"+Number(a.ayah_number);
+      return `<article class="learning-verse"><div class="learning-topline"><span>${name} · Ayat ${a.ayah_number} · Juz ${a.juz_number}</span><button class="secondary-button learning-audio-button" data-audio-ayah="${a.surah_id}:${a.ayah_number}">▶ Audio</button></div><p class="learning-arabic" lang="ar" dir="rtl">${escapeHtml(a.text_uthmani)}</p><div class="learning-translation"><span class="eyebrow">TEKS ARAB SEDERHANA</span><p lang="ar" dir="rtl">${escapeHtml(a.text_simple||"Belum tersedia pada data ayat ini.")}</p></div><small class="muted">${learned.has(key)?"✓ Sudah dipelajari":""}</small></article>`;
+    }).join("");
+    stage.innerHTML=`<article class="panel learning-ayah-card"><div class="learning-topline"><span>Ayat ${first.ayah_number}–${last.ayah_number}</span><span>${done} / ${total} dipelajari</span></div><div class="game-progress-track"><i style="width:${Math.round((index+visible.length)/total*100)}%"></i></div><div class="learning-verse-list">${cards}</div><div class="learning-audio"><span id="audioStatus" class="muted">Murottal per ayat · Mishary Alafasy</span><audio id="learningAudio" controls preload="none" hidden></audio></div><div class="learning-actions"><button class="secondary-button" id="prevLearning" ${index===0?"disabled":""}>← Sebelumnya</button><button class="primary-button" id="markLearned">Tandai ${visible.length} ayat dipelajari</button><button class="secondary-button" id="nextLearning" ${index+visible.length>=total?"disabled":""}>Berikutnya →</button></div></article>`;
   }
-  async function playLearningAudio(){
-    const a=learningState.rows[learningState.index],status=$("#audioStatus"),audio=$("#learningAudio"),button=$("#playAyahAudio");
-    if(!a||!status||!audio)return;
+  async function playLearningAudio(surahId,ayahNumber,button){
+    const status=$("#audioStatus"),audio=$("#learningAudio");
+    if(!status||!audio)return;
     button.disabled=true;status.textContent="Menyiapkan audio...";
     try{
-      const response=await fetch(`https://quranapi.pages.dev/api/audio/${a.surah_id}/${a.ayah_number}.json`);
+      const response=await fetch(`https://quranapi.pages.dev/api/audio/${surahId}/${ayahNumber}.json`);
       if(!response.ok)throw new Error("Layanan audio tidak merespons.");
       const data=await response.json(),recitation=data["1"];
       if(!recitation?.url)throw new Error("Audio ayat belum tersedia.");
