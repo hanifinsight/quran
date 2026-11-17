@@ -189,3 +189,12 @@ body.guest-mode footer{margin-top:44px}
 .learning-actions{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-top:18px}
 .learning-actions button{min-height:42px}
 @media(max-width:640px){.learning-topline{font-size:11px}.learning-actions{display:grid;grid-template-columns:1fr 1fr}.learning-actions #markLearned{grid-column:1/-1;grid-row:1}.learning-actions button{width:100%}.learning-arabic{padding:18px 8px}}
+
+
+/* Tampilan belajar beberapa ayat sekaligus */
+.learning-verse-list{display:grid;gap:14px;margin-top:14px}
+.learning-verse{padding:16px 10px;border-bottom:1px solid var(--line)}
+.learning-verse:last-child{border-bottom:0}
+.learning-verse .learning-arabic{margin:12px 0;padding:18px 10px;font-size:clamp(26px,3.2vw,36px)}
+.learning-audio-button{min-height:34px;padding:7px 12px;font-size:12px}
+.game-option.game-option-text{font-family:"Traditional Arabic","Noto Naskh Arabic",serif;font-size:clamp(20px,2.4vw,27px);line-height:1.9;text-align:right;direction:rtl;min-height:70px;padding:14px 18px;white-space:normal}
