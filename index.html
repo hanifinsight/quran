@@ -33,8 +33,9 @@
   <main class="main">
     <header class="topbar">
       <button class="menu-button" id="menuButton" aria-label="Buka menu">☰</button>
-      <div class="breadcrumb">Murojaah Quest <span>/</span> <b id="pageTitle">Dashboard</b></div>
-      <div class="top-actions"><span class="streak">🔥 <b>0</b> hari</span><span class="xp">✦ <b>0 XP</b></span><button class="primary-button top-login" id="topLogin">Masuk</button><button class="secondary-button top-logout" id="topLogout" hidden>Keluar</button><button class="avatar small" id="topAvatar" aria-label="Akun">U</button></div>
+      <a class="public-brand" href="#dashboard" data-page="dashboard"><span class="public-brand-mark">م</span><span><strong>Murojaah Quest</strong><small>Teman perjalanan menjaga hafalan</small></span></a>
+      <nav class="public-nav" aria-label="Navigasi publik"><button type="button" class="public-nav-link" id="publicQuran">Al-Qur’an</button></nav>
+      <div class="top-actions"><span class="streak">🔥 <b>0</b> hari</span><span class="xp">✦ <b>0 XP</b></span><button type="button" class="primary-button top-login" id="topLogin">Masuk</button><button type="button" class="secondary-button top-logout" id="topLogout" hidden>Keluar</button><button type="button" class="avatar small" id="topAvatar" aria-label="Akun" hidden>U</button></div>
     </header>
 
     <section class="page active-page" id="dashboard">

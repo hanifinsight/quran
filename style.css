@@ -23,3 +23,37 @@
 body.guest-mode .sidebar{display:none}
 body.guest-mode .main{margin-left:0}
 body.guest-mode .menu-button{display:none!important}
+
+/* Penyempurnaan landing publik dan navigasi atas */
+body.guest-mode .topbar{margin-bottom:28px;gap:18px}
+.public-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--green);margin-right:auto}
+.public-brand-mark{width:39px;height:39px;border:1px solid #b7c9bf;border-radius:12px;display:grid;place-items:center;color:#b58c3d;font:25px Georgia,serif}
+.public-brand strong,.public-brand small{display:block}
+.public-brand strong{font:700 15px system-ui,sans-serif;letter-spacing:.1px}
+.public-brand small{font-size:10px;color:var(--muted);margin-top:3px}
+.public-nav{display:flex;align-items:center;margin-right:10px}
+.public-nav-link{border:1px solid #dfe8e2;background:#fff;color:var(--green);padding:10px 18px;border-radius:999px;font-size:13px;font-weight:650;cursor:pointer}
+.public-nav-link:hover{background:var(--mint);border-color:#b9d2c4}
+body.guest-mode .main{max-width:1440px;margin:0 auto;padding:0 5.2% 36px}
+body.guest-mode .topbar{max-width:1440px;margin:0 auto 34px;padding:0 5.2%;height:82px}
+body.guest-mode .breadcrumb{display:none}
+body.guest-mode .landing-hero{min-height:390px;padding:58px 6%;box-shadow:0 18px 45px rgba(18,61,50,.09)}
+body.guest-mode .landing-copy h1{font-size:clamp(38px,5vw,58px);max-width:680px;letter-spacing:-.8px}
+body.guest-mode .landing-description{font-size:16px;max-width:610px}
+body.guest-mode .landing-intro{margin-top:54px}
+body.guest-mode .landing-intro h2{font-size:34px}
+body.guest-mode .landing-facts div{min-width:145px}
+body.guest-mode footer{margin-top:44px}
+@media(max-width:760px){
+ body.guest-mode .main{padding:0 16px 28px}
+ body.guest-mode .topbar{height:68px;margin-bottom:20px;padding:0 16px;gap:8px}
+ .public-brand small{display:none}
+ .public-brand strong{font-size:13px}
+ .public-brand-mark{width:34px;height:34px}
+ .public-nav{margin-right:0}
+ .public-nav-link{padding:8px 12px;font-size:12px}
+ body.guest-mode .landing-hero{padding:28px 23px;min-height:0}
+ body.guest-mode .landing-copy h1{font-size:34px}
+ body.guest-mode .landing-description{font-size:13px}
+ body.guest-mode .landing-intro{margin-top:34px}
+}

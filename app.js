@@ -27,6 +27,7 @@
     if (title) title.textContent = ({dashboard:"Dashboard",quran:"Al-Qur'an",hafalan:"Hafalan Saya",murojaah:"Jadwal Murojaah",games:"Permainan",pencapaian:"Pencapaian"})[id] || "Dashboard";
     $("#sidebar")?.classList.remove("open");
     if (id === "quran" && !$("#surahList")) renderQuranHome();
+    if (id === "quran" && client && (!window.MQ_SURAHS || !window.MQ_SURAHS.length)) loadSurahs();
     if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
   }
   // Delegasi klik membuat seluruh item navigasi tetap responsif, termasuk setelah render ulang.
@@ -46,6 +47,7 @@
     profile.onclick = () => openAuth(currentUser ? "account" : "login");
     const topAvatar = $("#topAvatar"); if (topAvatar) topAvatar.textContent = name.slice(0,1).toUpperCase();
     $("#topLogin").hidden = !!currentUser; $("#topLogout").hidden = !currentUser;
+    $("#publicQuran").hidden = false;
     renderDashboard();
   }
   function openAuth(mode="login") {
@@ -61,7 +63,8 @@
   }
   function closeAuth(){ $("#authOverlay").hidden = true; pendingPage = null; }
   $("#authClose").addEventListener("click", closeAuth);
-  $("#topLogin").addEventListener("click", () => openAuth("login"));
+  $("#topLogin").addEventListener("click", (event) => { event.preventDefault(); openAuth("login"); });
+  $("#publicQuran").addEventListener("click", () => showPage("quran"));
   $("#topAvatar").addEventListener("click", () => openAuth(currentUser ? "account" : "login"));
   async function doLogout(){ if(!client || !currentUser) return; if(!confirm("Keluar dari akun Murojaah Quest?")) return; const {error}=await client.auth.signOut(); if(error){ $("#authMessage").textContent=error.message; openAuth("account"); return; } closeAuth(); showPage("dashboard"); }
   $("#topLogout").addEventListener("click", doLogout);
