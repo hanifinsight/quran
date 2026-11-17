@@ -221,9 +221,6 @@
       $("#learnJuzField").hidden=scope!=="juz";
     }
   });
-  document.addEventListener("change",e=>{
-    if(e.target.matches("#taJuzSelect")){tileAdventureState.selectedJuz=e.target.value;tileAdventureState.challenge=null;renderTileAdventure();}
-  });
   document.addEventListener("click",e=>{
     const auth=e.target.closest("[data-auth]");
     if(auth){openAuth(auth.dataset.auth);return;}
@@ -242,178 +239,13 @@
   // Mesin latihan awal: tiga tipe kuis berbasis ayat yang tersimpan di Supabase.
   let gameState = { questions: [], index: 0, answers: [], surah: null, type: "ayah_gap", busy: false };
 
-  let tileAdventureState={run:null,selectedTile:null,rotation:0,challenge:null,loading:false,selectedJuz:"all"};
-  const MAX_ADVENTURE_TILES=10;
-  const tilePatterns=[
-    {kind:"road",name:"Jalur",edges:{n:"road",e:"field",s:"road",w:"field"},symbol:"↕"},
-    {kind:"road",name:"Jalur",edges:{n:"field",e:"road",s:"field",w:"road"},symbol:"↔"},
-    {kind:"cross",name:"Persimpangan",edges:{n:"road",e:"road",s:"road",w:"road"},symbol:"✣"},
-    {kind:"field",name:"Padang",edges:{n:"field",e:"field",s:"field",w:"field"},symbol:"❋"}
-  ];
-  const rotateEdges=(edges,turns)=>{const out={...edges};for(let i=0;i<(turns%4);i++){const n=out.n;out.n=out.w;out.w=out.s;out.s=out.e;out.e=n;}return out;};
-  function tileAt(tiles,x,y){return tiles.find(t=>Number(t.x)===x&&Number(t.y)===y);}
-  function validTilePlacement(tiles,x,y,edges){
-    if(tileAt(tiles,x,y))return false;
-    const neighbors=[
-      {x,y:y-1,own:"n",other:"s"},{x:x+1,y,own:"e",other:"w"},
-      {x,y:y+1,own:"s",other:"n"},{x:x-1,y,own:"w",other:"e"}
-    ];
-    let touches=false;
-    for(const n of neighbors){const t=tileAt(tiles,n.x,n.y);if(!t)continue;touches=true;const other=rotateEdges(t.edges||{},Number(t.rotation)||0);if(edges[n.own]!==other[n.other])return false;}
-    return touches;
-  }
-  function tileCellMarkup(tile,small=false){
-    const e=rotateEdges(tile.edges||{},Number(tile.rotation)||0);
-    const symbol=tile.kind==="start"?"۞":tile.kind==="cross"?"✣":tile.kind==="field"?"❋":"⌁";
-    const label=tile.kind==="start"?"Gerbang":tile.kind==="cross"?"Persimpangan":tile.kind==="field"?"Taman":"Jalur";
-    return `<div class="ta-tile-art ${escapeHtml(tile.kind||"road")} ${small?"small":""}" aria-label="${label}">
-      <i class="edge north ${e.n}"></i><i class="edge east ${e.e}"></i><i class="edge south ${e.s}"></i><i class="edge west ${e.w}"></i>
-      <b>${symbol}</b><span class="ta-tile-caption">${label}</span>
-    </div>`;
-  }
-  async function loadTileAdventure(){
-    const el=$("#games");if(!el||!currentUser||!client)return;
-    el.innerHTML='<div class="panel loading">Memuat peta petualangan dari cloud...</div>';
-    const {data,error}=await client.from("adventure_runs").select("*").eq("user_id",currentUser.id).eq("status","active").order("updated_at",{ascending:false}).limit(1).maybeSingle();
-    if(error){el.innerHTML=`<div class="panel loading">Gagal memuat permainan: ${escapeHtml(error.message)}</div>`;return;}
-    let run=data;
-    if(!run){
-      const initialBoard={version:1,tiles:[{id:"start",x:0,y:0,kind:"start",edges:{n:"road",e:"field",s:"road",w:"field"},rotation:0}]};
-      const initialInventory=[{id:"tile-starter-1",kind:"road",edges:{n:"road",e:"field",s:"road",w:"field"},rotation:0}];
-      const created=await client.from("adventure_runs").insert({user_id:currentUser.id,board_state:initialBoard,inventory:initialInventory}).select("*").single();
-      if(created.error){el.innerHTML=`<div class="panel loading">Gagal membuat peta: ${escapeHtml(created.error.message)}</div>`;return;}
-      run=created.data;
-    }
-    tileAdventureState={run,selectedTile:null,rotation:0,challenge:null,loading:false,selectedJuz:"all"};
-    renderTileAdventure(el);
-  }
-  async function saveTileAdventure(){
-    const run=tileAdventureState.run;if(!run||!client)return;
-    const {data,error}=await client.from("adventure_runs").update({
-      board_state:run.board_state,inventory:run.inventory,score:run.score,xp_earned:run.xp_earned,updated_at:new Date().toISOString()
-    }).eq("id",run.id).eq("user_id",currentUser.id).select("*").single();
-    if(error){alert("Progres belum tersimpan: "+error.message);return false;}
-    tileAdventureState.run=data;return true;
-  }
-  function getAdventureOutcome(run){
-    const tiles=run?.board_state?.tiles||[],inventory=run?.inventory||[];
-    const total=tiles.length+inventory.length;
-    if(total<MAX_ADVENTURE_TILES)return null;
-    if(inventory.length===0&&tiles.length===MAX_ADVENTURE_TILES)return "won";
-    const candidates=new Set();
-    for(const t of tiles){candidates.add((Number(t.x)+1)+","+Number(t.y));candidates.add((Number(t.x)-1)+","+Number(t.y));candidates.add(Number(t.x)+","+(Number(t.y)+1));candidates.add(Number(t.x)+","+(Number(t.y)-1));}
-    const hasMove=inventory.some(tile=>[...candidates].some(key=>{const [x,y]=key.split(",").map(Number);return [0,1,2,3].some(rot=>validTilePlacement(tiles,x,y,rotateEdges(tile.edges||{},rot)));}));
-    return hasMove?null:"lost";
-  }
-  async function restartTileAdventure(){
-    const run=tileAdventureState.run;if(!run||tileAdventureState.loading)return;
-    if(!confirm("Mulai petualangan baru? Papan dan tile pada sesi ini akan diarsipkan. XP yang sudah diperoleh tetap tersimpan."))return;
-    tileAdventureState.loading=true;
-    const outcome=getAdventureOutcome(run);
-    const {error:closeError}=await client.from("adventure_runs").update({status:outcome==="won"?"completed":"abandoned",updated_at:new Date().toISOString()}).eq("id",run.id).eq("user_id",currentUser.id);
-    if(closeError){tileAdventureState.loading=false;alert("Sesi lama belum dapat ditutup: "+closeError.message);return;}
-    const initialBoard={version:1,tiles:[{id:"start",x:0,y:0,kind:"start",edges:{n:"road",e:"field",s:"road",w:"field"},rotation:0}]};
-    const initialInventory=[{id:"tile-starter-"+crypto.randomUUID(),kind:"road",name:"Jalur",edges:{n:"road",e:"field",s:"road",w:"field"},rotation:0}];
-    const {data,error}=await client.from("adventure_runs").insert({user_id:currentUser.id,status:"active",board_state:initialBoard,inventory:initialInventory,score:0,xp_earned:0}).select("*").single();
-    tileAdventureState.loading=false;
-    if(error){alert("Sesi lama sudah diarsipkan, tetapi sesi baru gagal dibuat: "+error.message);return;}
-    tileAdventureState={run:data,selectedTile:null,rotation:0,challenge:null,loading:false,selectedJuz:"all"};
-    renderTileAdventure();
-  }
-  function renderTileAdventure(el=$("#games")){
-    const run=tileAdventureState.run;if(!el||!run)return;
-    const tiles=run.board_state?.tiles||[],inventory=run.inventory||[];
-    const totalTiles=tiles.length+inventory.length,remainingTiles=Math.max(0,MAX_ADVENTURE_TILES-totalTiles);
-    const selected=inventory.find(t=>t.id===tileAdventureState.selectedTile);
-    const outcome=getAdventureOutcome(run);
-    const margin=1;
-    const minX=Math.min(...tiles.map(t=>Number(t.x)))-margin,maxX=Math.max(...tiles.map(t=>Number(t.x)))+margin;
-    const minY=Math.min(...tiles.map(t=>Number(t.y)))-margin,maxY=Math.max(...tiles.map(t=>Number(t.y)))+margin;
-    const cols=maxX-minX+1,rows=maxY-minY+1,grid=[];
-    for(let y=minY;y<=maxY;y++){for(let x=minX;x<=maxX;x++){
-      const tile=tileAt(tiles,x,y);
-      const can=!tile&&selected&&[0,1,2,3].some(rot=>validTilePlacement(tiles,x,y,rotateEdges(selected.edges||{},rot)));
-      grid.push(tile?`<div class="ta-cell occupied" title="${escapeHtml(tile.name||"Tile terpasang")}">${tileCellMarkup(tile,true)}</div>`:
-        can?`<button class="ta-cell placeable" data-ta-place="${x},${y}" aria-label="Pasang tile di ${x}, ${y}"><span>＋</span></button>`:
-        `<div class="ta-cell empty" aria-hidden="true"></div>`);
-    }}
-    const challenge=tileAdventureState.challenge;
-    el.innerHTML=`<div class="section-head ta-title-row"><div><button type="button" class="game-back" id="backToGames">← Kembali</button><p class="eyebrow">PETUALANGAN SOLO</p><h1>Tile Adventure</h1><p class="muted">Selesaikan 10 tile untuk menuntaskan peta perjalanan ilmumu.</p></div><button type="button" class="secondary-button ta-restart" id="taRestart">↻ Mulai ulang</button></div>
-      ${outcome?`<section class="ta-outcome ${outcome}"><div class="ta-outcome-icon">${outcome==="won"?"🏆":"🧭"}</div><div><p class="eyebrow">${outcome==="won"?"MISI SELESAI":"PETUALANGAN TERHENTI"}</p><h2>${outcome==="won"?"Selamat! Kamu menang!":"Belum berhasil menyelesaikan peta"}</h2><p>${outcome==="won"?"Semua 10 tile berhasil dipasang. Kamu menuntaskan Tile Adventure!":"Tile yang tersisa tidak memiliki posisi pemasangan yang cocok. Coba strategi dan susunan tile yang berbeda."}</p><strong>${outcome==="won"?"Hadiah: "+(Number(run.xp_earned)||0)+" XP petualangan":"XP yang sudah didapat tetap menjadi milikmu."}</strong><button class="primary-button" id="taRestartOutcome">Main lagi</button></div></section>`:""}
-      <div class="ta-stats"><div><small>Progres tile</small><strong>${totalTiles}/${MAX_ADVENTURE_TILES}</strong></div><div><small>Tile di papan</small><strong>${tiles.length}</strong></div><div><small>XP petualangan</small><strong>${Number(run.xp_earned)||0}</strong></div></div>
-      <div class="ta-layout"><section class="panel ta-board-panel"><div class="panel-heading"><div><p class="eyebrow">PETA PRIBADI</p><h2>Bangun wilayahmu</h2><p class="muted ta-board-subtitle">Setiap kepingan membentuk bagian dari perjalananmu.</p></div><span class="pill">Tahap 1 · Solo</span></div>
-      <div class="ta-board-progress"><span>${totalTiles} dari ${MAX_ADVENTURE_TILES} tile</span><span>${remainingTiles} tersisa</span></div><div class="ta-board-scroll"><div class="ta-board" style="--ta-cols:${cols};--ta-rows:${rows}">${grid.join("")}</div></div>
-      <div class="ta-legend"><span><i class="road"></i> Jalan ilmu</span><span><i class="field"></i> Taman ilmu</span><span><i class="place"></i> Titik pemasangan</span></div>
-      <p class="muted ta-hint">${outcome?(outcome==="won"?"Peta selesai. Mulai ulang untuk petualangan berikutnya.":"Tidak ada langkah yang cocok. Mulai ulang untuk mencoba strategi baru."):selected?"Pilih titik + untuk memasang tile. Putar tile hingga jalurnya tersambung.":"Pilih tile dari inventaris untuk melihat titik pemasangan yang tersedia."}</p></section>
-      <aside class="ta-side"><section class="panel"><p class="eyebrow">INVENTARIS TILE</p><h2>Tile milikmu</h2><p class="muted ta-board-subtitle">Pilih kepingan yang ingin kamu pasang.</p><div class="ta-inventory">${inventory.length?inventory.map(t=>`<button class="ta-inventory-item ${selected?.id===t.id?"active":""}" data-ta-select="${escapeHtml(t.id)}">${tileCellMarkup(t,true)}<span>${escapeHtml(t.name|| (t.kind==="road"?"Jalur":t.kind==="cross"?"Persimpangan":"Padang"))}</span>${selected?.id===t.id?'<small>Dipilih</small>':""}</button>`).join(""):'<p class="muted">Belum ada tile. Selesaikan tantangan untuk mendapatkannya.</p>'}</div>${selected?`<div class="ta-selected-controls"><p class="muted">Rotasi tile: ${tileAdventureState.rotation*90}°</p><button class="secondary-button" id="taRotate">↻ Putar 90°</button></div>`:""}</section>
-      <section class="panel ta-challenge"><p class="eyebrow">CARI TILE BARU</p><h2>Tantangan murojaah</h2><label class="ta-juz-label" for="taJuzSelect">Pilih cakupan juz</label><select id="taJuzSelect" class="ta-juz-select"><option value="all" ${tileAdventureState.selectedJuz==="all"?"selected":""}>Semua Juz</option>${Array.from({length:30},(_,i)=>`<option value="${i+1}" ${tileAdventureState.selectedJuz===String(i+1)?"selected":""}>Juz ${i+1}</option>`).join("")}</select>${challenge?`<p class="muted">Pilih ayat yang melanjutkan bacaan berikut.</p><p class="ta-question-ar" lang="ar" dir="rtl">${escapeHtml(challenge.prompt)}</p><div class="ta-choices">${challenge.choices.map((v,i)=>`<button class="secondary-button ta-answer" data-ta-answer="${i}" ${challenge.answered!==undefined?"disabled":""}>${escapeHtml(v)}</button>`).join("")}</div>${challenge.answered!==undefined?`<p class="ta-feedback ${challenge.answered?"correct":"wrong"}">${challenge.answered?"Benar! Satu tile baru masuk ke inventaris.":"Belum tepat. Coba tantangan berikutnya untuk mendapatkan tile."}</p><button class="primary-button" id="taNextChallenge" ${remainingTiles<=0?"disabled":""}>${remainingTiles<=0?"Batas 10 tile tercapai":"Tantangan berikutnya"}</button>`:""}`:('<p class="muted">Jawab tantangan sambung ayat untuk mendapatkan kepingan peta.</p><button class="primary-button" id="taStartChallenge"'+(remainingTiles<=0?' disabled':'')+'>'+(remainingTiles<=0?'Batas 10 tile tercapai':'Mulai tantangan')+'</button>')}</section></aside></div>`;
-  }
-  async function startTileChallenge(){
-    const el=$("#games");if(!el||tileAdventureState.loading)return;
-    const run=tileAdventureState.run;
-    if((run.board_state?.tiles?.length||0)+(run.inventory?.length||0)>=MAX_ADVENTURE_TILES){alert("Kamu sudah mencapai batas 10 tile untuk petualangan ini.");return;}
-    tileAdventureState.loading=true;
-    const juz=tileAdventureState.selectedJuz;
-    let query=client.from("ayahs").select("surah_id,ayah_number,juz_number,text_uthmani").eq("verified",true);
-    if(juz!=="all")query=query.eq("juz_number",Number(juz));
-    const {data,error}=await query.order("surah_id").order("ayah_number");
-    tileAdventureState.loading=false;
-    if(error||!data||data.length<3){alert("Ayat untuk juz tersebut belum tersedia. Silakan coba lagi.");return;}
-    const pairs=[];
-    for(let i=0;i<data.length-1;i++){
-      if(Number(data[i].surah_id)===Number(data[i+1].surah_id)&&Number(data[i].ayah_number)+1===Number(data[i+1].ayah_number))pairs.push([data[i],data[i+1]]);
-    }
-    if(!pairs.length){alert("Belum ditemukan pasangan ayat berurutan untuk cakupan ini.");return;}
-    const pair=pairs[Math.floor(Math.random()*pairs.length)],prompt=pair[0].text_uthmani,correct=pair[1].text_uthmani;
-    const candidates=data.filter(a=>!(Number(a.surah_id)===Number(pair[1].surah_id)&&Number(a.ayah_number)===Number(pair[1].ayah_number))).map(a=>a.text_uthmani);
-    for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
-    const choices=[correct,...candidates.slice(0,3)];
-    for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
-    tileAdventureState.challenge={prompt,correct,choices,answered:undefined};
-    renderTileAdventure(el);
-  }
-  async function answerTileChallenge(index){
-    const q=tileAdventureState.challenge;if(!q||q.answered!==undefined)return;
-    const correct=q.choices[index]===q.correct;q.answered=correct;
-    if(correct){
-      const run=tileAdventureState.run;
-      if((run.board_state?.tiles?.length||0)+(run.inventory?.length||0)>=MAX_ADVENTURE_TILES){q.answered=false;alert("Batas 10 tile sudah tercapai.");renderTileAdventure();return;}
-      const pattern=tilePatterns[Math.floor(Math.random()*tilePatterns.length)];
-      run.inventory=[...(run.inventory||[]),{id:"tile-"+crypto.randomUUID(),kind:pattern.kind,name:pattern.name,edges:pattern.edges,rotation:0}];
-      run.score=(Number(run.score)||0)+10;
-      run.xp_earned=(Number(run.xp_earned)||0)+10;
-      const {data:reward}=await client.from("user_rewards").select("total_xp,current_streak,longest_streak,last_activity_date").eq("user_id",currentUser.id).maybeSingle();
-      const today=new Date().toISOString().slice(0,10),nextTotal=Number(reward?.total_xp||0)+10;
-      const nextStreak=reward?.last_activity_date===today?Number(reward.current_streak||1):Number(reward?.current_streak||0)+1;
-      const {error:xpError}=await client.from("user_rewards").upsert({user_id:currentUser.id,total_xp:nextTotal,current_streak:nextStreak,longest_streak:Math.max(Number(reward?.longest_streak||0),nextStreak),last_activity_date:today,updated_at:new Date().toISOString()});
-      if(!xpError){
-        const {data:badges}=await client.from("badges").select("id").not("xp_threshold","is",null).lte("xp_threshold",nextTotal);
-        if(badges?.length)await client.from("user_badges").upsert(badges.map(b=>({user_id:currentUser.id,badge_id:b.id})),{onConflict:"user_id,badge_id",ignoreDuplicates:true});
-        loadRewardSummary();
-      }
-      await saveTileAdventure();
-    }
-    renderTileAdventure();
-  }
-  async function placeAdventureTile(x,y){
-    const run=tileAdventureState.run,inventory=run?.inventory||[],tile=inventory.find(t=>t.id===tileAdventureState.selectedTile);
-    if(!tile)return;
-    const rotation=tileAdventureState.rotation,edges=rotateEdges(tile.edges,rotation);
-    if(!validTilePlacement(run.board_state.tiles,x,y,edges)){alert("Posisi ini belum cocok dengan sisi tile di sekitarnya.");return;}
-    run.board_state.tiles.push({id:tile.id,x,y,kind:tile.kind,edges:tile.edges,rotation});
-    run.inventory=inventory.filter(t=>t.id!==tile.id);
-    run.score=(Number(run.score)||0)+5;
-    tileAdventureState.selectedTile=null;tileAdventureState.rotation=0;
-    if(await saveTileAdventure())renderTileAdventure();
-  }
   let selectedGameType=null, gameScope="all";
   function renderGames(){
     const el=$("#games");if(!el)return;
     if(!selectedGameType){
-      el.innerHTML=`<div class="section-head"><div><p class="eyebrow">BELAJAR DENGAN SERU</p><h1>Permainan Hafalan</h1><p class="muted">Pilih tujuan latihanmu.</p></div></div><div class="game-type-grid"><button class="game-type-card learning-mode-card" data-learning-mode="read"><span class="game-type-icon">📖</span><strong>Belajar Hafalan</strong><small>Baca, dengarkan, dan pelajari ayat secara bertahap.</small></button><button class="game-type-card" data-learning-mode="test"><span class="game-type-icon">🧠</span><strong>Uji Hafalan</strong><small>Uji ingatan dengan tantangan ayat.</small></button><button class="game-type-card ta-entry-card" data-tile-adventure><span class="game-type-icon">🧩</span><strong>Tile Adventure</strong><small>Jelajahi peta, selesaikan tantangan, dan bangun wilayah dengan tile.</small></button></div>`;
+      el.innerHTML=`<div class="section-head"><div><p class="eyebrow">BELAJAR DENGAN SERU</p><h1>Permainan Hafalan</h1><p class="muted">Pilih tujuan latihanmu.</p></div></div><div class="game-type-grid"><button class="game-type-card learning-mode-card" data-learning-mode="read"><span class="game-type-icon">📖</span><strong>Belajar Hafalan</strong><small>Baca, dengarkan, dan pelajari ayat secara bertahap.</small></button><button class="game-type-card" data-learning-mode="test"><span class="game-type-icon">🧠</span><strong>Uji Hafalan</strong><small>Uji ingatan dengan tantangan ayat.</small></button></div>`;
       return;
     }
-    if(selectedGameType==="tile_adventure"){loadTileAdventure();return;}
     if(selectedGameType==="learn_read"){
       renderLearningSetup(el);
       return;
@@ -673,14 +505,6 @@
 
 
   document.addEventListener("click",e=>{
-    if(e.target.closest("[data-tile-adventure]")){selectedGameType="tile_adventure";loadTileAdventure();return;}
-    if(e.target.closest("#taRestart")||e.target.closest("#taRestartOutcome")){restartTileAdventure();return;}
-    if(e.target.closest("#taStartChallenge")){startTileChallenge();return;}
-    if(e.target.closest("#taNextChallenge")){tileAdventureState.challenge=null;startTileChallenge();return;}
-    const taAnswer=e.target.closest("[data-ta-answer]");if(taAnswer){answerTileChallenge(Number(taAnswer.dataset.taAnswer));return;}
-    const taSelect=e.target.closest("[data-ta-select]");if(taSelect){tileAdventureState.selectedTile=taSelect.dataset.taSelect;tileAdventureState.rotation=0;renderTileAdventure();return;}
-    if(e.target.closest("#taRotate")){tileAdventureState.rotation=(tileAdventureState.rotation+1)%4;renderTileAdventure();return;}
-    const taPlace=e.target.closest("[data-ta-place]");if(taPlace){const [x,y]=taPlace.dataset.taPlace.split(",").map(Number);placeAdventureTile(x,y);return;}
     const mode=e.target.closest("[data-learning-mode]");
     if(mode){selectedGameType=mode.dataset.learningMode==="read"?"learn_read":"test_menu";gameScope="all";renderGames();return;}
     const card=e.target.closest("[data-game-type]");
