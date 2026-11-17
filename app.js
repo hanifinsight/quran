@@ -286,6 +286,7 @@
   function makeQuestions(rows,type){
     const pool=rows.filter(r=>r.text_uthmani&&r.text_uthmani.trim());
     for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+    const surahMap=new Map((window.MQ_SURAHS||[]).map(s=>[Number(s.id),s]));
     return pool.slice(0,5).map(a=>{
       let correct,choices=[],prompt="",display=a.text_uthmani;
       if(type==="ayah_gap"){
@@ -295,31 +296,34 @@
         correct=words[missingIndex];
         const shown=[...words];shown[missingIndex]="ــــــ";
         display=shown.join(" ");
-        const distractors=pool.flatMap(r=>r.text_uthmani.split(/\\s+/)).filter(w=>w!==correct);
-        choices=[correct];
-        for(let i=distractors.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[distractors[i],distractors[j]]=[distractors[j],distractors[i]];}
-        distractors.forEach(w=>{if(choices.length<4&&!choices.includes(w))choices.push(w);});
-        prompt="Pilih kata yang tepat untuk melengkapi ayat rumpang.";
+        // Pengecoh berasal dari kata Al-Qur'an dengan panjang visual yang mirip.
+        const candidates=[...new Set(pool.flatMap(r=>r.text_uthmani.split(/\\s+/))
+          .filter(w=>w!==correct && Math.abs([...w].length-[...correct].length)<=2
+            && !/[۞۩]/u.test(w)))];
+        for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
+        choices=[correct,...candidates.slice(0,3)];
+        prompt="Pilih kata yang paling tepat untuk melengkapi ayat.";
       } else if(type==="guess_surah"){
-        const surahMap=new Map((window.MQ_SURAHS||[]).map(s=>[Number(s.id),s.name_latin]));
-        correct=surahMap.get(Number(a.surah_id));
+        const actual=surahMap.get(Number(a.surah_id));
+        correct=actual?.name_latin;
         if(!correct)return null;
-        choices=[correct];
-        const names=[...surahMap.values()].filter(n=>n!==correct);
-        for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]];}
-        choices.push(...names.slice(0,3));
-        prompt="Ayat ini berasal dari surah apa?";
+        // Surah pengecoh memiliki periode wahyu dan jumlah ayat yang relatif sebanding.
+        const candidates=[...surahMap.values()].filter(s=>Number(s.id)!==Number(a.surah_id)
+          && s.revelation_type===actual.revelation_type
+          && Math.abs(Number(s.ayah_count)-Number(actual.ayah_count))<=Math.max(25,Math.round(Number(actual.ayah_count)*0.6)));
+        for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
+        choices=[correct,...candidates.slice(0,3).map(s=>s.name_latin)];
+        prompt="Perhatikan ayatnya. Dari surah manakah ayat ini berasal?";
       } else {
         correct=String(a.juz_number);
-        choices=[correct];
-        const nums=Array.from({length:30},(_,i)=>String(i+1)).filter(n=>n!==correct);
-        for(let i=nums.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[nums[i],nums[j]]=[nums[j],nums[i]];}
-        choices.push(...nums.slice(0,3));
+        // Juz yang berdekatan menjadi pengecoh yang lebih masuk akal.
+        const candidates=[-2,-1,1,2].map(offset=>Number(correct)+offset).filter(n=>n>=1&&n<=30);
+        choices=[correct,...candidates.slice(0,3).map(String)];
         prompt="Ayat ini berada di juz berapa?";
       }
       for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
-      return {ayah:a,correct,choices,kind:type,display,prompt};
-    }).filter(q=>q&&q.choices.length>=2);
+      return {ayah:a,correct,choices,prompt,kind:type,display};
+    }).filter(q=>q&&q.choices.length===4);
   }
   function renderGameQuestion(){
     const stage=$("#gameStage"),q=gameState.questions[gameState.index];if(!stage||!q)return;
