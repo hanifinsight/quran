@@ -416,6 +416,14 @@
     const today=new Date().toISOString().slice(0,10);
     const {error:rewardError}=await client.from("user_rewards").upsert({user_id:currentUser.id,total_xp:Number(reward?.total_xp||0)+xp,current_streak:reward?.last_activity_date===today?Number(reward.current_streak||1):Number(reward?.current_streak||0)+1,longest_streak:Math.max(Number(reward?.longest_streak||0),Number(reward?.current_streak||0)+1),last_activity_date:today,updated_at:new Date().toISOString()});
     const warning=resultError||attemptError||rewardError;
+    if(!rewardError){
+      const newTotal=Number(reward?.total_xp||0)+xp;
+      const {data:eligibleBadges}=await client.from("badges").select("id").not("xp_threshold","is",null).lte("xp_threshold",newTotal);
+      if(eligibleBadges?.length){
+        await client.from("user_badges").upsert(eligibleBadges.map(b=>({user_id:currentUser.id,badge_id:b.id})),{onConflict:"user_id,badge_id",ignoreDuplicates:true});
+      }
+      loadRewardSummary();
+    }
     stage.innerHTML=`<div class="panel game-result"><div class="result-medal">${score>=80?"🏆":"🌱"}</div><p class="eyebrow">SESI SELESAI</p><h2>${score}%</h2><p class="muted">${correct} dari ${total} jawaban benar</p><div class="result-xp">+${xp} XP</div>${warning?'<p class="muted">Sebagian detail hasil belum tersimpan. Skor sesi utama sudah tersimpan.</p>':'<p class="muted">Hasil latihan dan XP telah disimpan.</p>'}<button class="primary-button" id="playAgain">Latihan lagi</button></div>`;
     $("#playAgain").addEventListener("click",renderGames);
   }
