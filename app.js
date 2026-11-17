@@ -198,12 +198,12 @@
   async function openSurah(id){if(!client)return;const s=(window.MQ_SURAHS||[]).find(x=>x.id===id);if(!s)return;$("#quran").innerHTML=`<button class="secondary-button" id="backSurahs">← Kembali ke daftar surah</button><div class="section-head" style="margin-top:20px"><p class="eyebrow">AL-QUR'AN</p><h1>${escapeHtml(s.name_latin)} <span lang="ar">${escapeHtml(s.name_ar)}</span></h1><p class="muted">${s.ayah_count} ayat · ${escapeHtml(s.revelation_type)}</p></div><div id="ayahContent" class="loading">Memuat ayat...</div>`;const {data,error}=await client.from("ayahs").select("ayah_number,juz_number,text_uthmani").eq("surah_id",id).order("ayah_number");const out=$("#ayahContent");if(!out)return;if(error){out.innerHTML=`<div class="panel loading">Ayat tidak dapat dimuat: ${escapeHtml(error.message)}</div>`;return;}out.innerHTML=(data||[]).map(a=>`<article class="panel" style="margin-bottom:10px"><small class="muted">${escapeHtml(s.name_latin)} · Ayat ${a.ayah_number} · Juz ${a.juz_number}</small><p lang="ar" dir="rtl" style="font-family:serif;font-size:27px;line-height:2.1;text-align:right;margin:12px 0">${escapeHtml(a.text_uthmani)}</p></article>`).join("");}
 
   // Mesin latihan awal: tiga tipe kuis berbasis ayat yang tersimpan di Supabase.
-  let gameState = { questions: [], index: 0, answers: [], surah: null, type: "continue_ayah", busy: false };
+  let gameState = { questions: [], index: 0, answers: [], surah: null, type: "ayah_gap", busy: false };
   function renderGames(){
     const el=$("#games"); if(!el) return;
     const surahs=window.MQ_SURAHS||[];
     el.innerHTML=`<div class="section-head"><div><p class="eyebrow">BELAJAR DENGAN SERU</p><h1>Permainan Hafalan</h1><p class="muted">Latihan singkat dari ayat Al-Qur'an yang tersedia di database.</p></div></div>
-      <div class="game-type-grid"><button type="button" class="game-type-card selected" data-game-type="continue_ayah"><span class="game-type-icon">↗</span><strong>Sambung Ayat</strong><small>Pilih ayat setelah bacaan.</small></button><button type="button" class="game-type-card" data-game-type="next_ayah"><span class="game-type-icon">✦</span><strong>Tebak Lanjutan</strong><small>Tebak kelanjutan ayat.</small></button><button type="button" class="game-type-card" data-game-type="ayah_puzzle"><span class="game-type-icon">▦</span><strong>Puzzle Kata</strong><small>Kenali susunan kata.</small></button></div><div class="panel game-setup"><input type="hidden" id="gameType" value="continue_ayah">
+      <div class="game-type-grid"><button type="button" class="game-type-card selected" data-game-type="ayah_gap"><span class="game-type-icon">▤</span><strong>Ayat Rumpang</strong><small>Lengkapi kata yang hilang dari ayat.</small></button><button type="button" class="game-type-card" data-game-type="guess_surah"><span class="game-type-icon">۞</span><strong>Tebak Surah</strong><small>Kenali nama surah dari ayatnya.</small></button><button type="button" class="game-type-card" data-game-type="guess_juz"><span class="game-type-icon">30</span><strong>Tebak Juz</strong><small>Tentukan juz tempat ayat berada.</small></button></div><div class="panel game-setup"><input type="hidden" id="gameType" value="ayah_gap">
       <div class="game-scope-options"><button type="button" class="active" data-game-scope="surah">Pilih Surah</button><button type="button" data-game-scope="juz">Pilih Juz</button></div><label id="gameSurahField">Pilih surah<select id="gameSurah">${surahs.map(s=>`<option value="${s.id}">${s.id}. ${escapeHtml(s.name_latin)}</option>`).join("")}</select></label><label id="gameJuzField" hidden>Pilih juz<select id="gameJuz"><option value="1">Juz 1</option><option value="2">Juz 2</option><option value="3">Juz 3</option><option value="4">Juz 4</option><option value="5">Juz 5</option><option value="6">Juz 6</option><option value="7">Juz 7</option><option value="8">Juz 8</option><option value="9">Juz 9</option><option value="10">Juz 10</option><option value="11">Juz 11</option><option value="12">Juz 12</option><option value="13">Juz 13</option><option value="14">Juz 14</option><option value="15">Juz 15</option><option value="16">Juz 16</option><option value="17">Juz 17</option><option value="18">Juz 18</option><option value="19">Juz 19</option><option value="20">Juz 20</option><option value="21">Juz 21</option><option value="22">Juz 22</option><option value="23">Juz 23</option><option value="24">Juz 24</option><option value="25">Juz 25</option><option value="26">Juz 26</option><option value="27">Juz 27</option><option value="28">Juz 28</option><option value="29">Juz 29</option><option value="30">Juz 30</option></select></label>
       <button class="primary-button" id="startGame" ${!currentUser?"disabled":""}>Mulai latihan</button>
       <p class="muted game-note">${currentUser?"Pilih jenis latihan dan surah. Satu sesi berisi 5 soal.":"Masuk ke akun untuk menyimpan hasil latihan."}</p></div><div id="gameStage"></div>`;
@@ -221,27 +221,48 @@
     renderGameQuestion();
   }
   function makeQuestions(rows,type){
-    const candidates=rows.slice(0,-1);
-    for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
-    return candidates.slice(0,5).map(a=>{
-      const next=rows[rows.indexOf(a)+1];
-      if(type==="ayah_puzzle"){
-        const words=(a.text_uthmani||"").split(/\s+/).filter(Boolean);
-        const correct=words.join(" ");
-        const choices=[correct];
-        while(choices.length<4){const shuffled=[...words];for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}const candidate=shuffled.join(" ");if(!choices.includes(candidate))choices.push(candidate);}
-        for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
-        return {ayah:a,correct,choices,kind:type};
+    const pool=rows.filter(r=>r.text_uthmani&&r.text_uthmani.trim());
+    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+    return pool.slice(0,5).map(a=>{
+      let correct,choices=[],prompt="",display=a.text_uthmani;
+      if(type==="ayah_gap"){
+        const words=a.text_uthmani.split(/\\s+/).filter(Boolean);
+        if(words.length<3)return null;
+        const missingIndex=Math.floor(Math.random()*words.length);
+        correct=words[missingIndex];
+        const shown=[...words];shown[missingIndex]="ــــــ";
+        display=shown.join(" ");
+        const distractors=pool.flatMap(r=>r.text_uthmani.split(/\\s+/)).filter(w=>w!==correct);
+        choices=[correct];
+        for(let i=distractors.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[distractors[i],distractors[j]]=[distractors[j],distractors[i]];}
+        distractors.forEach(w=>{if(choices.length<4&&!choices.includes(w))choices.push(w);});
+        prompt="Pilih kata yang tepat untuk melengkapi ayat rumpang.";
+      } else if(type==="guess_surah"){
+        const surahMap=new Map((window.MQ_SURAHS||[]).map(s=>[Number(s.id),s.name_latin]));
+        correct=surahMap.get(Number(a.surah_id));
+        if(!correct)return null;
+        choices=[correct];
+        const names=[...surahMap.values()].filter(n=>n!==correct);
+        for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]];}
+        choices.push(...names.slice(0,3));
+        prompt="Ayat ini berasal dari surah apa?";
+      } else {
+        correct=String(a.juz_number);
+        choices=[correct];
+        const nums=Array.from({length:30},(_,i)=>String(i+1)).filter(n=>n!==correct);
+        for(let i=nums.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[nums[i],nums[j]]=[nums[j],nums[i]];}
+        choices.push(...nums.slice(0,3));
+        prompt="Ayat ini berada di juz berapa?";
       }
-      const options=[next?.text_uthmani,...rows.filter(x=>x!==next && x!==a).slice(0,3).map(x=>x.text_uthmani)].filter(Boolean);
-      for(let i=options.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[options[i],options[j]]=[options[j],options[i]];}
-      return {ayah:a,correct:next?.text_uthmani,choices:options,kind:type};
-    }).filter(q=>q.correct);
+      for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
+      return {ayah:a,correct,choices,kind:type,display,prompt};
+    }).filter(q=>q&&q.choices.length>=2);
   }
   function renderGameQuestion(){
-    const stage=$("#gameStage"),q=gameState.questions[gameState.index]; if(!stage||!q)return;
+    const stage=$("#gameStage"),q=gameState.questions[gameState.index];if(!stage||!q)return;
     const total=gameState.questions.length;
-    stage.innerHTML=`<article class="panel game-question"><div class="game-progress"><span>Soal ${gameState.index+1} dari ${total}</span><span>${Math.round(gameState.index/total*100)}%</span></div><div class="game-progress-track"><i style="width:${gameState.index/total*100}%"></i></div><p class="eyebrow">${gameState.type==="ayah_puzzle"?"SUSUN KATA":"PERHATIKAN AYAT BERIKUT"}</p><p class="game-arabic" lang="ar" dir="rtl">${escapeHtml(q.kind==="ayah_puzzle"?q.ayah.text_uthmani:q.ayah.text_uthmani)}</p><p class="muted">${gameState.type==="continue_ayah"?"Pilih ayat yang tepat setelah ayat di atas.":gameState.type==="next_ayah"?"Manakah kelanjutan ayat berikutnya?":"Urutan kata diacak. Pilih susunan yang benar."}</p><div class="game-options">${q.choices.map((c,i)=>`<button class="game-option" data-answer="${i}" lang="ar" dir="rtl">${escapeHtml(c)}</button>`).join("")}</div></article>`;
+    const label=gameState.type==="ayah_gap"?"AYAT RUMPANG":gameState.type==="guess_surah"?"TEBAK SURAH":"TEBAK JUZ";
+    stage.innerHTML=`<article class="panel game-question"><div class="game-progress"><span>Soal ${gameState.index+1} dari ${total}</span><span>${Math.round(gameState.index/total*100)}%</span></div><div class="game-progress-track"><i style="width:${gameState.index/total*100}%"></i></div><p class="eyebrow">${label}</p><p class="game-arabic" lang="ar" dir="rtl">${escapeHtml(q.display)}</p><p class="muted">${escapeHtml(q.prompt)}</p><div class="game-options">${q.choices.map((v,i)=>`<button class="game-option ${gameState.type==="guess_surah"||gameState.type==="guess_juz"?"game-option-text":""}" data-answer="${i}">${escapeHtml(v)}</button>`).join("")}</div></article>`;
   }
   async function chooseGameAnswer(index){
     if(gameState.busy)return; gameState.busy=true;
