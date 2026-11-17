@@ -260,7 +260,12 @@
   }
   function tileCellMarkup(tile,small=false){
     const e=rotateEdges(tile.edges||{},Number(tile.rotation)||0);
-    return `<div class="ta-tile-art ${escapeHtml(tile.kind||"road")} ${small?"small":""}"><i class="edge north ${e.n}"></i><i class="edge east ${e.e}"></i><i class="edge south ${e.s}"></i><i class="edge west ${e.w}"></i><b>${tile.kind==="start"?"۞":tile.kind==="cross"?"✣":tile.kind==="field"?"❋":"↟"}</b></div>`;
+    const symbol=tile.kind==="start"?"۞":tile.kind==="cross"?"✣":tile.kind==="field"?"❋":"⌁";
+    const label=tile.kind==="start"?"Gerbang":tile.kind==="cross"?"Persimpangan":tile.kind==="field"?"Taman":"Jalur";
+    return `<div class="ta-tile-art ${escapeHtml(tile.kind||"road")} ${small?"small":""}" aria-label="${label}">
+      <i class="edge north ${e.n}"></i><i class="edge east ${e.e}"></i><i class="edge south ${e.s}"></i><i class="edge west ${e.w}"></i>
+      <b>${symbol}</b><span class="ta-tile-caption">${label}</span>
+    </div>`;
   }
   async function loadTileAdventure(){
     const el=$("#games");if(!el||!currentUser||!client)return;
@@ -281,7 +286,7 @@
   async function saveTileAdventure(){
     const run=tileAdventureState.run;if(!run||!client)return;
     const {data,error}=await client.from("adventure_runs").update({
-      board_state:run.board_state,inventory:run.inventory,score:run.score,updated_at:new Date().toISOString()
+      board_state:run.board_state,inventory:run.inventory,score:run.score,xp_earned:run.xp_earned,updated_at:new Date().toISOString()
     }).eq("id",run.id).eq("user_id",currentUser.id).select("*").single();
     if(error){alert("Progres belum tersimpan: "+error.message);return false;}
     tileAdventureState.run=data;return true;
@@ -290,20 +295,26 @@
     const run=tileAdventureState.run;if(!el||!run)return;
     const tiles=run.board_state?.tiles||[],inventory=run.inventory||[];
     const selected=inventory.find(t=>t.id===tileAdventureState.selectedTile);
-    const min=-4,max=4,grid=[];
-    for(let y=min;y<=max;y++){for(let x=min;x<=max;x++){
+    const margin=2;
+    const minX=Math.min(...tiles.map(t=>Number(t.x)))-margin,maxX=Math.max(...tiles.map(t=>Number(t.x)))+margin;
+    const minY=Math.min(...tiles.map(t=>Number(t.y)))-margin,maxY=Math.max(...tiles.map(t=>Number(t.y)))+margin;
+    const cols=maxX-minX+1,rows=maxY-minY+1,grid=[];
+    for(let y=minY;y<=maxY;y++){for(let x=minX;x<=maxX;x++){
       const tile=tileAt(tiles,x,y);
-      const can= !tile && [0,1,2,3].some(rot=>validTilePlacement(tiles,x,y,rotateEdges(selected?.edges||{},rot)));
-      grid.push(tile?`<div class="ta-cell occupied" title="Tile terpasang">${tileCellMarkup(tile,true)}</div>`:
-        can?`<button class="ta-cell placeable ${tileAdventureState.selectedTile?"selected-target":""}" data-ta-place="${x},${y}" aria-label="Pasang tile di ${x}, ${y}"><span>＋</span></button>`:
-        '<div class="ta-cell"></div>');
+      const can=!tile&&selected&&[0,1,2,3].some(rot=>validTilePlacement(tiles,x,y,rotateEdges(selected.edges||{},rot)));
+      grid.push(tile?`<div class="ta-cell occupied" title="${escapeHtml(tile.name||"Tile terpasang")}">${tileCellMarkup(tile,true)}</div>`:
+        can?`<button class="ta-cell placeable" data-ta-place="${x},${y}" aria-label="Pasang tile di ${x}, ${y}"><span>＋</span></button>`:
+        `<div class="ta-cell empty" aria-hidden="true"></div>`);
     }}
     const challenge=tileAdventureState.challenge;
-    el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Kembali</button><p class="eyebrow">PETUALANGAN BARU</p><h1>Tile Adventure</h1><p class="muted">Selesaikan tantangan untuk mendapatkan tile, lalu kembangkan peta dengan menyambungkan sisi yang cocok.</p></div></div>
+    el.innerHTML=`<div class="section-head"><div><button type="button" class="game-back" id="backToGames">← Kembali</button><p class="eyebrow">PETUALANGAN BARU</p><h1>Tile Adventure</h1><p class="muted">Selesaikan tantangan, dapatkan kepingan, lalu bangun peta perjalanan ilmumu.</p></div></div>
       <div class="ta-stats"><div><small>Tile terpasang</small><strong>${tiles.length}</strong></div><div><small>Inventaris</small><strong>${inventory.length}</strong></div><div><small>XP petualangan</small><strong>${Number(run.xp_earned)||0}</strong></div></div>
-      <div class="ta-layout"><section class="panel ta-board-panel"><div class="panel-heading"><div><p class="eyebrow">PETA PRIBADI</p><h2>Bangun wilayahmu</h2></div><span class="pill">Tahap 1 · Solo</span></div><div class="ta-board-scroll"><div class="ta-board">${grid.join("")}</div></div><div class="ta-legend"><span><i class="road"></i> Jalur</span><span><i class="field"></i> Wilayah</span><span>＋ Posisi yang dapat dipilih</span></div><p class="muted ta-hint">${selected?"Pilih posisi bertanda +. Putar tile sebelum memasangnya jika diperlukan.":"Pilih tile dari inventaris untuk melihat posisi yang cocok."}</p></section>
-      <aside class="ta-side"><section class="panel"><p class="eyebrow">INVENTARIS TILE</p><h2>Tile milikmu</h2><div class="ta-inventory">${inventory.length?inventory.map(t=>`<button class="ta-inventory-item ${selected?.id===t.id?"active":""}" data-ta-select="${escapeHtml(t.id)}">${tileCellMarkup(t,true)}<span>${escapeHtml(t.name|| (t.kind==="road"?"Jalur":t.kind==="cross"?"Persimpangan":"Padang"))}</span></button>`).join(""):'<p class="muted">Belum ada tile. Selesaikan tantangan untuk mendapatkannya.</p>'}</div>${selected?`<div class="ta-selected-controls"><p class="muted">Tile dipilih · Rotasi ${tileAdventureState.rotation*90}°</p><button class="secondary-button" id="taRotate">↻ Putar tile</button></div>`:""}</section>
-      <section class="panel ta-challenge"><p class="eyebrow">CARI TILE BARU</p><h2>Tantangan murojaah</h2>${challenge?`<p class="muted">Ayat berikutnya yang benar adalah...</p><p class="ta-question-ar" lang="ar" dir="rtl">${escapeHtml(challenge.prompt)}</p><div class="ta-choices">${challenge.choices.map((v,i)=>`<button class="secondary-button ta-answer" data-ta-answer="${i}" ${challenge.answered!==undefined?"disabled":""}>${escapeHtml(v)}</button>`).join("")}</div>${challenge.answered!==undefined?`<p class="ta-feedback ${challenge.answered?"correct":"wrong"}">${challenge.answered?"Benar! Kamu mendapatkan satu tile.":"Belum tepat. Jawaban benar: "+escapeHtml(challenge.correct)}</p><button class="primary-button" id="taNextChallenge">${challenge.answered?"Tantangan berikutnya":"Coba tantangan lain"}</button>`:""}`:'<p class="muted">Selesaikan tantangan sambung ayat untuk mendapatkan tile baru.</p><button class="primary-button" id="taStartChallenge">Mulai tantangan</button>'}</section></aside></div>`;
+      <div class="ta-layout"><section class="panel ta-board-panel"><div class="panel-heading"><div><p class="eyebrow">PETA PRIBADI</p><h2>Bangun wilayahmu</h2><p class="muted ta-board-subtitle">Setiap kepingan membentuk bagian dari perjalananmu.</p></div><span class="pill">Tahap 1 · Solo</span></div>
+      <div class="ta-board-scroll"><div class="ta-board" style="--ta-cols:${cols};--ta-rows:${rows}">${grid.join("")}</div></div>
+      <div class="ta-legend"><span><i class="road"></i> Jalan ilmu</span><span><i class="field"></i> Taman ilmu</span><span><i class="place"></i> Titik pemasangan</span></div>
+      <p class="muted ta-hint">${selected?"Pilih titik + untuk memasang tile. Putar tile hingga jalurnya tersambung.":"Pilih tile dari inventaris untuk melihat titik pemasangan yang tersedia."}</p></section>
+      <aside class="ta-side"><section class="panel"><p class="eyebrow">INVENTARIS TILE</p><h2>Tile milikmu</h2><p class="muted ta-board-subtitle">Pilih kepingan yang ingin kamu pasang.</p><div class="ta-inventory">${inventory.length?inventory.map(t=>`<button class="ta-inventory-item ${selected?.id===t.id?"active":""}" data-ta-select="${escapeHtml(t.id)}">${tileCellMarkup(t,true)}<span>${escapeHtml(t.name|| (t.kind==="road"?"Jalur":t.kind==="cross"?"Persimpangan":"Padang"))}</span>${selected?.id===t.id?'<small>Dipilih</small>':""}</button>`).join(""):'<p class="muted">Belum ada tile. Selesaikan tantangan untuk mendapatkannya.</p>'}</div>${selected?`<div class="ta-selected-controls"><p class="muted">Rotasi tile: ${tileAdventureState.rotation*90}°</p><button class="secondary-button" id="taRotate">↻ Putar 90°</button></div>`:""}</section>
+      <section class="panel ta-challenge"><p class="eyebrow">CARI TILE BARU</p><h2>Tantangan murojaah</h2>${challenge?`<p class="muted">Pilih ayat yang melanjutkan bacaan berikut.</p><p class="ta-question-ar" lang="ar" dir="rtl">${escapeHtml(challenge.prompt)}</p><div class="ta-choices">${challenge.choices.map((v,i)=>`<button class="secondary-button ta-answer" data-ta-answer="${i}" ${challenge.answered!==undefined?"disabled":""}>${escapeHtml(v)}</button>`).join("")}</div>${challenge.answered!==undefined?`<p class="ta-feedback ${challenge.answered?"correct":"wrong"}">${challenge.answered?"Benar! Satu tile baru masuk ke inventaris.":"Belum tepat. Coba tantangan berikutnya untuk mendapatkan tile."}</p><button class="primary-button" id="taNextChallenge">Tantangan berikutnya</button>`:""}`:'<p class="muted">Jawab tantangan sambung ayat untuk mendapatkan kepingan peta.</p><button class="primary-button" id="taStartChallenge">Mulai tantangan</button>'}</section></aside></div>`;
   }
   async function startTileChallenge(){
     const el=$("#games");if(!el||tileAdventureState.loading)return;tileAdventureState.loading=true;
