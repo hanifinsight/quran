@@ -182,6 +182,13 @@
     document.querySelectorAll(".top-actions .streak, .top-actions .xp").forEach(node => node.hidden = guest);
     $("#topAvatar").hidden = guest;
   }
+  document.addEventListener("change",e=>{
+    if(e.target?.id==="learnScope"){
+      const scope=e.target.value;
+      $("#learnSurahField").hidden=scope!=="surah";
+      $("#learnJuzField").hidden=scope!=="juz";
+    }
+  });
   document.addEventListener("click",e=>{
     const auth=e.target.closest("[data-auth]");
     if(auth){openAuth(auth.dataset.auth);return;}
