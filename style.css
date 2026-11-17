@@ -154,3 +154,6 @@ body.guest-mode footer{margin-top:44px}
   .auth-card{padding:30px 22px 22px;border-radius:17px}
   .auth-card h2{font-size:27px}
 }
+
+#authPassword[hidden]{display:none!important}
+#forgotPassword{margin-top:0;padding-top:2px;font-size:12px;color:#6c7e73}
