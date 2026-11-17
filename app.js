@@ -57,18 +57,18 @@
     $("#authOverlay").setAttribute("aria-hidden", "false");
     $("#authMessage").textContent = "";
     $("#authForm").hidden = mode === "account";
-    requestAnimationFrame(() => {
-      const focusTarget = mode === "account" ? $("#authClose") : $("#authEmail");
-      focusTarget?.focus();
-    });
-    $("#authTitle").textContent = mode === "signup" ? "Buat akun baru" : mode === "account" ? "Akun Anda" : "Masuk ke akun";
-    $("#authDescription").textContent = mode === "signup" ? "Daftar untuk mulai menyimpan hafalan pribadi." : mode === "account" ? `Sedang masuk sebagai ${currentUser?.email || ""}` : "Masuk untuk menyimpan hafalan dan progres pribadi.";
+    $("#authTitle").textContent = mode === "signup" ? "Buat akun baru" : mode === "forgot" ? "Lupa password" : mode === "recovery" ? "Buat password baru" : mode === "account" ? "Akun Anda" : "Masuk ke akun";
+    $("#authDescription").textContent = mode === "signup" ? "Daftar untuk mulai menyimpan hafalan pribadi." : mode === "forgot" ? "Masukkan email akun. Kami akan mengirim tautan untuk mengatur ulang password." : mode === "recovery" ? "Buat password baru untuk akun Murojaah Quest." : mode === "account" ? `Sedang masuk sebagai ${currentUser?.email || ""}` : "Masuk untuk menyimpan hafalan dan progres pribadi.";
     $("#nameField").hidden = mode !== "signup";
-    $("#authPassword").autocomplete = mode === "signup" ? "new-password" : "current-password";
-    $("#authSubmit").textContent = mode === "signup" ? "Daftar" : "Masuk";
-    $("#authSwitch").hidden = mode === "account";
+    $("#authPassword").hidden = mode === "forgot";
+    $("#authPassword").required = mode !== "forgot";
+    $("#authPassword").autocomplete = mode === "signup" || mode === "recovery" ? "new-password" : "current-password";
+    $("#authSubmit").textContent = mode === "signup" ? "Daftar" : mode === "forgot" ? "Kirim tautan reset" : mode === "recovery" ? "Simpan password baru" : "Masuk";
+    $("#authSwitch").hidden = mode === "account" || mode === "forgot" || mode === "recovery";
     $("#authSwitch").textContent = mode === "signup" ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar";
+    $("#forgotPassword").hidden = mode !== "login";
     $("#authLogout").hidden = mode !== "account";
+    requestAnimationFrame(() => (mode === "account" ? $("#authClose") : mode === "forgot" ? $("#authEmail") : $("#authPassword"))?.focus());
   }
   function closeAuth(){
     $("#authOverlay").hidden = true;
@@ -89,36 +89,43 @@
   $("#topLogout").addEventListener("click", doLogout);
   $("#authOverlay").addEventListener("click", e => { if(e.target === $("#authOverlay")) closeAuth(); });
   $("#authSwitch").addEventListener("click", () => openAuth(authMode === "signup" ? "login" : "signup"));
+  $("#forgotPassword").addEventListener("click", () => openAuth("forgot"));
   $("#authLogout").addEventListener("click", doLogout);
   $("#authForm").addEventListener("submit", async e => {
     e.preventDefault(); if(!client) return;
     const email=$("#authEmail").value.trim(), password=$("#authPassword").value;
     const submit=$("#authSubmit"); submit.disabled=true; submit.textContent="Memproses..."; $("#authMessage").textContent="";
     try {
-      if(authMode === "signup") {
+      if(authMode === "forgot") {
+        const redirectTo=window.location.origin+window.location.pathname;
+        const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo});
+        if(error) throw error;
+        $("#authMessage").textContent="Tautan reset password telah dikirim. Periksa email, termasuk folder Spam.";
+      } else if(authMode === "recovery") {
+        const {error}=await client.auth.updateUser({password});
+        if(error) throw error;
+        await client.auth.signOut();
+        currentUser=null; updateAuthUI(); openAuth("login");
+        $("#authMessage").textContent="Password berhasil diperbarui. Silakan masuk dengan password baru.";
+      } else if(authMode === "signup") {
         const display_name=$("#authName").value.trim() || "Pengguna";
         const {data,error}=await client.auth.signUp({email,password,options:{data:{display_name}}});
         if(error) throw error;
-        if(data.session){ $("#authMessage").textContent="Pendaftaran berhasil dan Anda sudah masuk."; }
-        else { $("#authMessage").textContent="Pendaftaran berhasil. Periksa email untuk konfirmasi, lalu masuk."; }
+        $("#authMessage").textContent=data.session ? "Pendaftaran berhasil dan Anda sudah masuk." : "Pendaftaran berhasil. Periksa email untuk konfirmasi, lalu masuk.";
       } else {
         const {data,error}=await client.auth.signInWithPassword({email,password}); if(error) throw error;
-        currentUser = data.user || data.session?.user || null;
-        updateAuthUI();
-        const destination = pendingPage || "dashboard";
-        closeAuth();
-        pendingPage = null;
-        showPage(destination);
+        currentUser=data.user||data.session?.user||null; updateAuthUI();
+        const destination=pendingPage||"dashboard"; closeAuth(); pendingPage=null; showPage(destination);
       }
-    } catch(err) { $("#authMessage").textContent=err.message || "Terjadi kesalahan."; }
-    finally { submit.disabled=false; submit.textContent=authMode === "signup" ? "Daftar" : "Masuk"; }
+    } catch(err) { $("#authMessage").textContent=err.message||"Terjadi kesalahan."; }
+    finally { submit.disabled=false; submit.textContent=authMode==="signup"?"Daftar":authMode==="forgot"?"Kirim tautan reset":authMode==="recovery"?"Simpan password baru":"Masuk"; }
   });
 
   const initial = location.hash.replace("#","") || "dashboard";
   if(configured && window.supabase){ client=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY); }
   if(client){
     client.auth.getSession().then(({data})=>{currentUser=data.session?.user||null;updateAuthUI();});
-    client.auth.onAuthStateChange((_event,session)=>{currentUser=session?.user||null;updateAuthUI();});
+    client.auth.onAuthStateChange((event,session)=>{currentUser=session?.user||null;updateAuthUI();if(event==="PASSWORD_RECOVERY")openAuth("recovery");});
   } else { $("#surahList").innerHTML='<div class="panel loading">Hubungkan Supabase terlebih dahulu untuk memuat 114 surah.</div>'; $("#surahCount").textContent="Belum terhubung"; }
   updateAuthUI();
   showPage(document.getElementById(initial) ? initial : "dashboard");
