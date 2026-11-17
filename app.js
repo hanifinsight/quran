@@ -211,13 +211,13 @@
   }
   async function startGame(){
     if(!currentUser){openAuth("login");return;}
-    const surahId=Number($("#gameSurah")?.value), type=$("#gameType")?.value||"continue_ayah";
+    const scope=$("#gameJuzField")?.hidden===false?"juz":"surah", surahId=Number($("#gameSurah")?.value), juz=Number($("#gameJuz")?.value), type=$("#gameType")?.value||"continue_ayah";
     const stage=$("#gameStage"); if(!stage)return;
     stage.innerHTML='<div class="panel loading">Menyiapkan soal dari ayat...</div>';
-    const {data,error}=await client.from("ayahs").select("surah_id,ayah_number,text_uthmani").eq("surah_id",surahId).eq("verified",true).order("ayah_number");
+    let query=client.from("ayahs").select("surah_id,ayah_number,juz_number,text_uthmani").eq("verified",true).order("surah_id").order("ayah_number"); query=scope==="juz"?query.eq("juz_number",juz):query.eq("surah_id",surahId); const {data,error}=await query;
     if(error){stage.innerHTML=`<div class="panel loading">Tidak dapat memuat ayat: ${escapeHtml(error.message)}</div>`;return;}
-    if(!data||data.length<6){stage.innerHTML='<div class="panel loading">Surah ini belum memiliki cukup ayat terverifikasi untuk membuat 5 soal. Coba surah lain.</div>';return;}
-    gameState={questions:makeQuestions(data,type),index:0,answers:[],surah:surahId,type,busy:false};
+    if(!data||data.length<2){stage.innerHTML='<div class="panel loading">Data ayat belum cukup untuk latihan ini.</div>';return;}
+    gameState={questions:makeQuestions(data,type),index:0,answers:[],surah:scope==="surah"?surahId:null,juz:scope==="juz"?juz:null,scope,type,busy:false};
     renderGameQuestion();
   }
   function makeQuestions(rows,type){
@@ -262,14 +262,14 @@
     stage.innerHTML='<div class="panel loading">Menyimpan hasil latihan...</div>';
     const first=answers[0]?.q.ayah;
     const {data:session,error:sessionError}=await client.from("review_sessions").insert({
-      user_id:currentUser.id,surah_id:gameState.surah,start_ayah:Math.min(...answers.map(a=>a.q.ayah.ayah_number)),
+      user_id:currentUser.id,surah_id:gameState.surah,juz_number:gameState.juz,scope_type:gameState.scope,start_ayah:Math.min(...answers.map(a=>a.q.ayah.ayah_number)),
       end_ayah:Math.max(...answers.map(a=>a.q.ayah.ayah_number)),mode:"game",scope_type:"surah",
       question_type:gameState.type,total_questions:total,correct_answers:correct,score,started_at:new Date().toISOString(),completed_at:new Date().toISOString(),duration_seconds:0
     }).select("id").single();
     if(sessionError){stage.innerHTML=`<div class="panel loading">Hasil belum tersimpan: ${escapeHtml(sessionError.message)}. Skor latihanmu ${score}%.</div>`;return;}
     const resultRows=answers.map(a=>({session_id:session.id,surah_id:a.q.ayah.surah_id,ayah_number:a.q.ayah.ayah_number,result:a.correct?"fluent":"mistake",question_type:gameState.type,selected_answer:a.chosen,is_correct:a.correct,answered_at:new Date().toISOString()}));
     const {error:resultError}=await client.from("ayah_review_results").insert(resultRows);
-    const attempts=answers.map(a=>({user_id:currentUser.id,game_type:gameState.type,surah_id:gameState.surah,question_ref:String(a.q.ayah.ayah_number),correct:a.correct,elapsed_seconds:0,xp_earned:a.correct?10:0}));
+    const attempts=answers.map(a=>({user_id:currentUser.id,game_type:gameState.type,surah_id:a.q.ayah.surah_id,question_ref:String(a.q.ayah.surah_id)+":"+String(a.q.ayah.ayah_number),correct:a.correct,elapsed_seconds:0,xp_earned:a.correct?10:0}));
     const {error:attemptError}=await client.from("game_attempts").insert(attempts);
     const {data:reward}=await client.from("user_rewards").select("total_xp,current_streak,longest_streak,last_activity_date").eq("user_id",currentUser.id).maybeSingle();
     const today=new Date().toISOString().slice(0,10);
@@ -281,6 +281,8 @@
 
 
   document.addEventListener("click",e=>{
+    const typeCard=e.target.closest("[data-game-type]"); if(typeCard){$("#gameType").value=typeCard.dataset.gameType;document.querySelectorAll(".game-type-card").forEach(x=>x.classList.toggle("selected",x===typeCard));return;}
+    const scopeButton=e.target.closest("[data-game-scope]"); if(scopeButton){document.querySelectorAll("[data-game-scope]").forEach(x=>x.classList.toggle("active",x===scopeButton));$("#gameSurahField").hidden=scopeButton.dataset.gameScope!=="surah";$("#gameJuzField").hidden=scopeButton.dataset.gameScope!=="juz";return;}
     if(e.target.closest("#startGame")){startGame();return;}
     const answer=e.target.closest(".game-option[data-answer]");
     if(answer) chooseGameAnswer(Number(answer.dataset.answer));
