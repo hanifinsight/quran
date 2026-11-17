@@ -256,26 +256,48 @@
     const {rows,index,batchSize,learned}=learningState,total=rows.length,visible=rows.slice(index,Math.min(index+batchSize,total));
     if(!visible.length)return;
     const first=visible[0],last=visible[visible.length-1],done=learned.size;
-    const cards=visible.map(a=>{
+    const verses=visible.map(a=>{
       const name=learningState.names?.get(Number(a.surah_id))||("Surah "+a.surah_id);
       const key=Number(a.surah_id)+":"+Number(a.ayah_number);
-      return `<article class="learning-verse"><div class="learning-topline"><span>${name} · Ayat ${a.ayah_number} · Juz ${a.juz_number}</span><button class="secondary-button learning-audio-button" data-audio-ayah="${a.surah_id}:${a.ayah_number}">▶ Audio</button></div><p class="learning-arabic" lang="ar" dir="rtl">${escapeHtml(a.text_uthmani)}</p><div class="learning-translation"><span class="eyebrow">TEKS ARAB SEDERHANA</span><p lang="ar" dir="rtl">${escapeHtml(a.text_simple||"Belum tersedia pada data ayat ini.")}</p></div><small class="muted">${learned.has(key)?"✓ Sudah dipelajari":""}</small></article>`;
-    }).join("");
-    stage.innerHTML=`<article class="panel learning-ayah-card"><div class="learning-topline"><span>Ayat ${first.ayah_number}–${last.ayah_number}</span><span>${done} / ${total} dipelajari</span></div><div class="game-progress-track"><i style="width:${Math.round((index+visible.length)/total*100)}%"></i></div><div class="learning-verse-list">${cards}</div><div class="learning-audio"><span id="audioStatus" class="muted">Murottal per ayat · Mishary Alafasy</span><audio id="learningAudio" controls preload="none" hidden></audio></div><div class="learning-actions"><button class="secondary-button" id="prevLearning" ${index===0?"disabled":""}>← Sebelumnya</button><button class="primary-button" id="markLearned">Tandai ${visible.length} ayat dipelajari</button><button class="secondary-button" id="nextLearning" ${index+visible.length>=total?"disabled":""}>Berikutnya →</button></div></article>`;
+      return `<span class="learning-page-ayah" lang="ar" dir="rtl">${escapeHtml(a.text_uthmani)} <span class="learning-ayah-number">${a.ayah_number}</span></span>`;
+    }).join(" ");
+    stage.innerHTML=`<article class="panel learning-ayah-card"><div class="learning-topline"><span>${learningState.names?.get(Number(first.surah_id))||("Surah "+first.surah_id)} · Ayat ${first.ayah_number}–${last.ayah_number}</span><span>${done} / ${total} dipelajari</span></div><div class="game-progress-track"><i style="width:${Math.round((index+visible.length)/total*100)}%"></i></div><section class="learning-quran-page" aria-label="Halaman bacaan Al-Qur'an"><div class="learning-page-heading"><span>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</span><small>${first.surah_id} · ${first.juz_number}</small></div><div class="learning-page-text">${verses}</div><div class="learning-page-footer"><span>${first.ayah_number} – ${last.ayah_number}</span><span>مُرَاجَعَة</span></div></section><section class="learning-page-audio"><div><strong>Audio halaman ini</strong><p id="audioStatus" class="muted">Murottal Mishary Alafasy · ${visible.length} ayat</p></div><button class="primary-button" id="playLearningPageAudio">▶ Putar audio</button><audio id="learningAudio" controls preload="none" hidden></audio></section><div class="learning-actions"><button class="secondary-button" id="prevLearning" ${index===0?"disabled":""}>← Sebelumnya</button><button class="primary-button" id="markLearned">Tandai ${visible.length} ayat dipelajari</button><button class="secondary-button" id="nextLearning" ${index+visible.length>=total?"disabled":""}>Berikutnya →</button></div></article>`;
   }
-  async function playLearningAudio(surahId,ayahNumber,button){
-    const status=$("#audioStatus"),audio=$("#learningAudio");
-    if(!status||!audio)return;
-    button.disabled=true;status.textContent="Menyiapkan audio...";
+  async function playLearningPageAudio(){
+    const status=$("#audioStatus"),audio=$("#learningAudio"),button=$("#playLearningPageAudio");
+    if(!status||!audio||!button)return;
+    const visible=learningState.rows.slice(learningState.index,learningState.index+learningState.batchSize);
+    button.disabled=true;status.textContent="Menyiapkan audio satu halaman...";
     try{
-      const response=await fetch(`https://quranapi.pages.dev/api/audio/${surahId}/${ayahNumber}.json`);
-      if(!response.ok)throw new Error("Layanan audio tidak merespons.");
-      const data=await response.json(),recitation=data["1"];
-      if(!recitation?.url)throw new Error("Audio ayat belum tersedia.");
-      audio.src=recitation.url;audio.hidden=false;audio.load();
-      await audio.play();status.textContent=recitation.reciter||"Mishary Alafasy";
-    }catch(error){status.textContent="Audio gagal diputar. Periksa koneksi lalu coba lagi.";console.error(error);}
-    finally{button.disabled=false;}
+      const urls=[];
+      for(const ayah of visible){
+        const response=await fetch(`https://quranapi.pages.dev/api/audio/${ayah.surah_id}/${ayah.ayah_number}.json`);
+        if(!response.ok)throw new Error("Audio ayat tidak tersedia.");
+        const data=await response.json(),url=data["1"]?.url;
+        if(!url)throw new Error("Audio ayat tidak tersedia.");
+        urls.push(url);
+      }
+      let current=0;
+      audio.hidden=false;
+      audio.onended=async()=>{
+        current++;
+        if(current<urls.length){
+          audio.src=urls[current];audio.load();
+          try{await audio.play();status.textContent=`Memutar ayat ${visible[current].ayah_number} dari ${visible.length}...`;}
+          catch(error){status.textContent="Lanjutkan audio dengan tombol putar.";}
+        }else{
+          status.textContent="Audio halaman selesai diputar.";
+          button.disabled=false;button.textContent="↻ Putar ulang";
+          audio.onended=null;
+        }
+      };
+      audio.src=urls[0];audio.load();await audio.play();
+      status.textContent=`Memutar ${visible.length} ayat secara berurutan...`;
+      button.textContent="Memutar...";
+    }catch(error){
+      status.textContent="Audio tidak dapat dimuat. Periksa koneksi lalu coba lagi.";
+      console.error(error);button.disabled=false;
+    }
   }
   async function startGame(){
     if(!currentUser){openAuth("login");return;}
@@ -375,8 +397,7 @@
     if(e.target.closest("#backToGames")){selectedGameType=null;renderGames();return;}
     if(e.target.closest("#learnScope")){const scope=$("#learnScope").value;$("#learnSurahField").hidden=scope!=="surah";$("#learnJuzField").hidden=scope!=="juz";return;}
     if(e.target.closest("#startLearning")){startLearning();return;}
-    const audioButton=e.target.closest("[data-audio-ayah]");
-    if(audioButton){const [sid,anum]=audioButton.dataset.audioAyah.split(":").map(Number);playLearningAudio(sid,anum,audioButton);return;}
+    if(e.target.closest("#playLearningPageAudio")){playLearningPageAudio();return;}
     if(e.target.closest("#markLearned")){
       learningState.rows.slice(learningState.index,learningState.index+learningState.batchSize).forEach(a=>learningState.learned.add(Number(a.surah_id)+":"+Number(a.ayah_number)));
       renderLearningAyah();return;
