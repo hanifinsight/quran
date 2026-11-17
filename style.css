@@ -320,3 +320,54 @@ body.guest-mode footer{margin-top:44px}
 @media(max-width:700px){
   .gap-quran-page .gap-page-empty{width:4.5em;height:1.45em;margin:0 .04em}
 }
+
+/* Tile Adventure prototype */
+.ta-entry-card{background:linear-gradient(135deg,#f4f8f2,#fff8e9);border-color:#d9e7d9}
+.ta-entry-card .game-type-icon{background:#e4f0e5;color:#1e6651}
+.ta-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 18px}
+.ta-stats>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.ta-stats small{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}
+.ta-stats strong{font-size:22px;color:var(--green)}
+.ta-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.8fr);gap:18px;align-items:start}
+.ta-board-panel,.ta-side>.panel{padding:18px}
+.ta-board-scroll{overflow:auto;padding:8px 0 12px}
+.ta-board{display:grid;grid-template-columns:repeat(9,minmax(42px,1fr));gap:4px;min-width:420px;max-width:650px;margin:0 auto}
+.ta-cell{aspect-ratio:1;min-width:0;border-radius:8px;background:#f0f3ef;border:1px solid #e3e9e3;display:grid;place-items:center;padding:3px}
+button.ta-cell{cursor:pointer}
+.ta-cell.placeable{background:#f8fbf6;border:1px dashed #9bb8a5;color:#438263;font-size:21px;transition:background .15s,border-color .15s}
+.ta-cell.placeable:hover,.ta-cell.selected-target{background:#e3f2e6;border:1px solid #438263}
+.ta-cell.occupied{background:#eaf1e9;border-color:#d5e2d5}
+.ta-tile-art{position:relative;width:100%;height:100%;border-radius:6px;overflow:hidden;background:#e9dfc6;display:grid;place-items:center;border:1px solid rgba(61,87,60,.16)}
+.ta-tile-art b{position:relative;z-index:2;font-size:17px;color:#526c4d;text-shadow:0 1px 1px #fff}
+.ta-tile-art .edge{position:absolute;display:block}
+.ta-tile-art .edge.road{background:#c6a56c}
+.ta-tile-art .edge.field{background:#9cbd83}
+.ta-tile-art .edge.north,.ta-tile-art .edge.south{left:40%;width:20%;height:50%}
+.ta-tile-art .edge.north{top:0}.ta-tile-art .edge.south{bottom:0}
+.ta-tile-art .edge.east,.ta-tile-art .edge.west{top:40%;height:20%;width:50%}
+.ta-tile-art .edge.east{right:0}.ta-tile-art .edge.west{left:0}
+.ta-tile-art.start{background:#e7d9ad}
+.ta-tile-art.cross{background:#dce9ce}
+.ta-tile-art.field{background:#d8e8c9}
+.ta-tile-art.small b{font-size:12px}
+.ta-legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:11px;padding:4px 2px}
+.ta-legend span{display:flex;align-items:center;gap:5px}
+.ta-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.ta-legend i.road{background:#c6a56c}.ta-legend i.field{background:#9cbd83}
+.ta-hint{font-size:12px;margin:10px 0 0}
+.ta-side{display:grid;gap:16px}
+.ta-inventory{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.ta-inventory-item{min-width:0;background:#f8faf7;border:1px solid var(--line);border-radius:10px;padding:7px;display:grid;gap:6px;justify-items:center;cursor:pointer;color:var(--ink);font-size:10px}
+.ta-inventory-item .ta-tile-art{width:48px;height:48px}
+.ta-inventory-item.active{border-color:#39805d;background:#eaf4eb;box-shadow:0 0 0 2px #d5ead8}
+.ta-selected-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
+.ta-selected-controls p{font-size:11px;margin:0}
+.ta-challenge h2{margin-bottom:8px}
+.ta-question-ar{font-family:"Amiri","Noto Naskh Arabic",serif;font-size:22px;line-height:2.1;text-align:right;background:#fbfaf4;border:1px solid #eee7d5;border-radius:12px;padding:12px;margin:12px 0}
+.ta-choices{display:grid;gap:8px}
+.ta-answer{width:100%;text-align:right;white-space:normal;line-height:1.8;font-family:"Amiri","Noto Naskh Arabic",serif}
+.ta-feedback{padding:10px 12px;border-radius:9px;font-size:13px;margin:12px 0}
+.ta-feedback.correct{background:#e8f5e9;color:#24633e}.ta-feedback.wrong{background:#fff0ed;color:#a33b2d}
+.ta-challenge .primary-button{width:100%;margin-top:10px}
+@media(max-width:900px){.ta-layout{grid-template-columns:1fr}.ta-side{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.ta-stats{gap:7px}.ta-stats>div{padding:10px}.ta-stats strong{font-size:18px}.ta-stats small{font-size:10px}.ta-side{grid-template-columns:1fr}.ta-board-panel,.ta-side>.panel{padding:13px}.ta-board{min-width:390px}}
