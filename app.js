@@ -8,7 +8,7 @@
   let client = null, currentUser = null, authMode = "login", pendingPage = null;
 
   function showPage(id) {
-    if (["hafalan", "murojaah", "pencapaian"].includes(id) && !currentUser) { pendingPage = id; openAuth("login"); return; }
+    if (["hafalan", "murojaah", "games", "pencapaian"].includes(id) && !currentUser) { pendingPage = id; openAuth("login"); return; }
     pages.forEach(p => p.classList.toggle("active-page", p.id === id));
     navLinks.forEach(a => a.classList.toggle("active", a.dataset.page === id));
     $("#pageTitle").textContent = ({dashboard:"Dashboard",quran:"Al-Qur'an",hafalan:"Hafalan Saya",murojaah:"Jadwal Murojaah",games:"Permainan",pencapaian:"Pencapaian"})[id] || "Dashboard";
@@ -17,7 +17,6 @@
     location.hash = id;
   }
   navLinks.forEach(a => a.addEventListener("click", e => { e.preventDefault(); showPage(a.dataset.page); }));
-  document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => showPage(b.dataset.go)));
   $("#menuButton").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
 
   function updateAuthUI() {
@@ -83,14 +82,37 @@
     const el=$("#dashboard"); if(!el) return;
     const name=currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "Pengguna";
     if(!currentUser){
-      el.innerHTML=`<div class="welcome"><div><p class="eyebrow">ASSALAMU'ALAIKUM 👋</p><h1>Mulai perjalanan menjaga hafalan.</h1><p class="muted">Baca Al-Qur'an kapan saja. Masuk untuk mencatat hafalan, mengatur murojaah, dan melihat perkembangan pribadi.</p><div class="dashboard-actions"><button class="primary-button" data-auth="signup">Buat akun gratis</button><button class="secondary-button" data-auth="login">Masuk</button><button class="secondary-button" data-go="quran">Baca Al-Qur'an</button></div></div><div class="welcome-art" aria-hidden="true">۞</div></div><div class="content-grid"><article class="panel"><p class="eyebrow">UNTUK PENGUNJUNG</p><h2>Jelajahi Al-Qur'an</h2><p class="muted">Buka daftar 114 surah dan baca ayat tanpa perlu membuat akun.</p><button class="primary-button" data-go="quran">Mulai membaca</button></article><article class="panel"><p class="eyebrow">SIMPAN PERJALANANMU</p><h2>Hafalan dan progres pribadi</h2><p class="muted">Masuk atau daftar untuk mulai mencatat hafalan dan membangun kebiasaan murojaah.</p><button class="secondary-button" data-auth="signup">Daftar sekarang</button></article></div>`;
+      el.innerHTML=`
+        <section class="landing-hero">
+          <div class="landing-copy">
+            <p class="eyebrow">TEMAN PERJALANAN MENJAGA HAFALAN</p>
+            <h1>Lebih dekat dengan Al-Qur’an, setiap hari.</h1>
+            <p class="landing-description">Murojaah Quest membantu menghadirkan pengalaman membaca Al-Qur’an yang nyaman. Mulai dengan membaca 114 surah, tanpa perlu membuat akun.</p>
+            <button class="primary-button landing-cta" data-go="quran">Baca Al-Qur’an <span aria-hidden="true">→</span></button>
+          </div>
+          <div class="landing-art" aria-hidden="true"><span>۞</span><small>اقْرَأْ</small></div>
+        </section>
+        <section class="landing-intro">
+          <p class="eyebrow">MUROJAAH QUEST</p>
+          <h2>Mulai dari membaca.</h2>
+          <p class="muted">Jelajahi daftar surah dan baca ayat Al-Qur’an. Fitur pencatatan hafalan dan perjalanan pribadi tersedia setelah masuk ke akun.</p>
+          <div class="landing-facts"><div><strong>114</strong><span>Surah</span></div><div><strong>6.236</strong><span>Ayat</span></div><div><strong>Gratis</strong><span>Akses membaca</span></div></div>
+        </section>`;
     } else {
       el.innerHTML=`<div class="welcome"><div><p class="eyebrow">ASSALAMU'ALAIKUM 👋</p><h1>Selamat datang, ${escapeHtml(name)}.</h1><p class="muted">Lanjutkan perjalanan menjaga hafalan. Sedikit demi sedikit, secara konsisten.</p><div class="dashboard-actions"><button class="primary-button" data-go="hafalan">Buka Hafalan Saya</button><button class="secondary-button" data-go="quran">Baca Al-Qur'an</button></div></div><div class="welcome-art" aria-hidden="true">۞</div></div><div class="stats-grid"><article class="stat-card"><span class="stat-icon green">▤</span><div><small>Surah dihafal</small><strong>0</strong><small class="muted">Surah tercatat</small></div></article><article class="stat-card"><span class="stat-icon gold">✧</span><div><small>Ayat dikuasai</small><strong>0</strong><small class="muted">Ayat hafalan</small></div></article><article class="stat-card"><span class="stat-icon blue">↻</span><div><small>Perlu murojaah</small><strong>0</strong><small class="muted">Target berikutnya</small></div></article><article class="stat-card"><span class="stat-icon purple">☆</span><div><small>Total XP</small><strong>0</strong><small class="muted">Terus bertumbuh</small></div></article></div><div class="content-grid"><article class="panel"><p class="eyebrow">MULAI HARI INI</p><h2>Target murojaah</h2><p class="muted">Belum ada hafalan yang tercatat. Tambahkan hafalan pertamamu untuk memulai.</p><button class="primary-button" data-go="hafalan">+ Tambah hafalan</button></article><article class="panel"><p class="eyebrow">AKUN AKTIF</p><h2>${escapeHtml(currentUser.email||"")}</h2><p class="muted">Progres pribadi akan ditampilkan di dashboard setelah data hafalan tersedia.</p><button class="secondary-button" data-go="pencapaian">Lihat pencapaian</button></article></div>`;
     }
+    const guest = !currentUser;
+    document.querySelectorAll(".top-actions .streak, .top-actions .xp").forEach(node => node.hidden = guest);
+    $("#topAvatar").hidden = guest;
   }
-  document.addEventListener("click",e=>{const a=e.target.closest("[data-auth]");if(a)openAuth(a.dataset.auth);});
+  document.addEventListener("click",e=>{
+    const auth=e.target.closest("[data-auth]");
+    if(auth){openAuth(auth.dataset.auth);return;}
+    const go=e.target.closest("[data-go]");
+    if(go) showPage(go.dataset.go);
+  });
 
-  function renderQuranHome(){ $("#quran").innerHTML=quranHomeHTML; if(window.MQ_SURAHS) renderSurahs(filterSurahs($("#surahSearch").value)); }
+    function renderQuranHome(){ $("#quran").innerHTML=quranHomeHTML; if(window.MQ_SURAHS) renderSurahs(filterSurahs($("#surahSearch").value)); }
   async function loadSurahs(){ if(!$("#surahList")) renderQuranHome(); const el=$("#surahList"); if(!el)return; el.innerHTML='<div class="loading">Memuat daftar surah...</div>'; const {data,error}=await client.from("surahs").select("id,name_ar,name_latin,ayah_count,revelation_type").order("id"); if(!$("#surahList"))renderQuranHome(); const list=$("#surahList"); if(!list)return; if(error){list.innerHTML=`<div class="panel loading">Gagal memuat data: ${escapeHtml(error.message)}</div>`;return;} window.MQ_SURAHS=data||[]; renderSurahs(window.MQ_SURAHS); }
   function filterSurahs(q){q=(q||"").trim().toLocaleLowerCase("id");return(window.MQ_SURAHS||[]).filter(s=>s.name_latin.toLocaleLowerCase("id").includes(q)||String(s.id)===q);}
   function renderSurahs(rows){const list=$("#surahList");if(!list)return;$("#surahCount").textContent=`${rows.length} surah`;list.innerHTML=rows.map(s=>`<button class="surah-item" data-surah="${s.id}"><span class="surah-number">${s.id}</span><span class="surah-meta"><b>${escapeHtml(s.name_latin)}</b><small>${s.ayah_count} ayat · ${s.revelation_type==="makkiyah"?"Makkiyah":"Madaniyah"}</small></span><span class="surah-ar" lang="ar" dir="rtl">${escapeHtml(s.name_ar)}</span></button>`).join("");}
