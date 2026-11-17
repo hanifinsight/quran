@@ -347,19 +347,61 @@
     const ordered=rows.filter(r=>r.text_uthmani&&r.text_uthmani.trim()).slice().sort((x,y)=>Number(x.surah_id)-Number(y.surah_id)||Number(x.ayah_number)-Number(y.ayah_number));
     const surahMap=new Map((window.MQ_SURAHS||[]).map(s=>[Number(s.id),s]));
     if(type==="ayah_gap"){
-      // Satu ayat utuh dikosongkan. Tampilkan konteks ayat sebelumnya dan sesudahnya.
-      const eligible=ordered.filter(a=>ordered.some(p=>Number(p.surah_id)===Number(a.surah_id)&&Number(p.ayah_number)===Number(a.ayah_number)-1)
-        && ordered.some(n=>Number(n.surah_id)===Number(a.surah_id)&&Number(n.ayah_number)===Number(a.ayah_number)+1));
-      for(let i=eligible.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[eligible[i],eligible[j]]=[eligible[j],eligible[i]];}
-      return eligible.slice(0,5).map(a=>{
-        const prev=ordered.find(x=>Number(x.surah_id)===Number(a.surah_id)&&Number(x.ayah_number)===Number(a.ayah_number)-1);
-        const next=ordered.find(x=>Number(x.surah_id)===Number(a.surah_id)&&Number(x.ayah_number)===Number(a.ayah_number)+1);
-        const candidates=ordered.filter(x=>Number(x.surah_id)===Number(a.surah_id)&&Number(x.ayah_number)!==Number(a.ayah_number)&&x.text_uthmani!==a.text_uthmani);
+      const groups=[];
+      for(const ayah of ordered){
+        let group=groups[groups.length-1];
+        if(!group||Number(group[0].surah_id)!==Number(ayah.surah_id)||Number(group[group.length-1].ayah_number)+1!==Number(ayah.ayah_number)){
+          group=[];groups.push(group);
+        }
+        group.push(ayah);
+      }
+      const possible=groups.filter(g=>g.length>=4);
+      for(let i=possible.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[possible[i],possible[j]]=[possible[j],possible[i]];}
+      const sequencePool=[];
+      for(const group of groups){
+        for(let len=1;len<=3;len++)for(let i=0;i+len<=group.length;i++){
+          sequencePool.push(group.slice(i,i+len));
+        }
+      }
+      const questions=[];
+      for(const group of possible){
+        if(questions.length>=5)break;
+        const blankLength=1+Math.floor(Math.random()*3);
+        const actualLength=Math.min(blankLength,group.length-2);
+        if(actualLength<1)continue;
+        const blankStart=1+Math.floor(Math.random()*(group.length-actualLength-1));
+        const blankEnd=blankStart+actualLength;
+        const pageStart=Math.max(0,blankStart-(2+Math.floor(Math.random()*2)));
+        const pageEnd=Math.min(group.length,Math.max(blankEnd+2,pageStart+10));
+        const page=group.slice(pageStart,pageEnd);
+        if(page.length<4)continue;
+        const missing=group.slice(blankStart,blankEnd);
+        const correct=missing.map(a=>a.text_uthmani).join(" ");
+        const distractors=[];
+        const candidates=sequencePool.filter(seq=>seq.length===actualLength&&seq.map(a=>a.text_uthmani).join(" ")!==correct);
         for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
-        const choices=[a.text_uthmani,...candidates.slice(0,3).map(x=>x.text_uthmani)];
+        for(const seq of candidates){
+          const value=seq.map(a=>a.text_uthmani).join(" ");
+          if(!distractors.includes(value))distractors.push(value);
+          if(distractors.length===3)break;
+        }
+        if(distractors.length<3)continue;
+        const choices=[correct,...distractors];
         for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
-        return {ayah:a,correct:a.text_uthmani,choices,prompt:"Pilih ayat lengkap yang tepat untuk melanjutkan rangkaian bacaan.",contextBefore:prev.text_uthmani,contextAfter:next.text_uthmani,previousNumber:prev.ayah_number,nextNumber:next.ayah_number,kind:type};
-      }).filter(q=>q.choices.length===4);
+        const pageAyahs=page.map((a,index)=>({
+          number:Number(a.ayah_number),
+          text:a.text_uthmani,
+          hidden:index+pageStart>=blankStart&&index+pageStart<blankEnd
+        }));
+        const surahName=surahMap.get(Number(group[0].surah_id))?.name_latin||("Surah "+group[0].surah_id);
+        questions.push({
+          ayah:missing[0],correct,choices,prompt:"Baca satu halaman ini. Ingat urutan ayat, lalu pilih rangkaian ayat yang hilang.",
+          pageAyahs,blankStartNumber:Number(missing[0].ayah_number),
+          blankEndNumber:Number(missing[missing.length-1].ayah_number),
+          blankLength,surahName,kind:type
+        });
+      }
+      return questions;
     }
     const pool=ordered.slice();
     for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
@@ -383,9 +425,12 @@
     const total=gameState.questions.length;
     const label=gameState.type==="ayah_gap"?"AYAT RUMPANG":gameState.type==="guess_surah"?"TEBAK SURAH":"TEBAK JUZ";
     const questionBody=gameState.type==="ayah_gap"
-      ? `<div class="gap-context"><div class="gap-context-label">AYAT SEBELUMNYA · AYAT ${q.previousNumber}</div><p class="gap-context-arabic" lang="ar" dir="rtl">${escapeHtml(q.contextBefore)}</p><div class="gap-missing"><span>AYAT BERIKUTNYA YANG DICARI</span><strong>?</strong><small>Pilih satu ayat lengkap di bawah</small></div><div class="gap-context-label">AYAT SESUDAHNYA · AYAT ${q.nextNumber}</div><p class="gap-context-arabic" lang="ar" dir="rtl">${escapeHtml(q.contextAfter)}</p></div>`
+      ? `<div class="gap-page-wrap"><div class="gap-page-meta"><strong>${escapeHtml(q.surahName)}</strong><span>Ayat ${q.pageAyahs[0].number}–${q.pageAyahs[q.pageAyahs.length-1].number}</span></div><div class="gap-quran-page" lang="ar" dir="rtl">${q.pageAyahs.map(a=>a.hidden?`<span class="gap-page-missing"><span class="gap-page-missing-number">﴿ ${a.number} ﴾</span><span class="gap-page-missing-label">AYAT DIKOSONGKAN</span></span>`:`<span class="gap-page-verse">${escapeHtml(a.text)} <span class="gap-page-verse-number">﴿${a.number}﴾</span></span>`).join(" ")}</div><div class="gap-page-note">Bagian kosong: ${q.blankLength} ayat · Ayat ${q.blankStartNumber}${q.blankLength>1?"–"+q.blankEndNumber:""}</div></div>`
       : `<p class="game-arabic" lang="ar" dir="rtl">${escapeHtml(q.display)}</p>`;
-    stage.innerHTML=`<article class="panel game-question ${gameState.type==="ayah_gap"?"gap-quiz":""}"><div class="game-progress"><span>Soal ${gameState.index+1} dari ${total}</span><span>${Math.round(gameState.index/total*100)}%</span></div><div class="game-progress-track"><i style="width:${gameState.index/total*100}%"></i></div><p class="eyebrow">${label}</p>${questionBody}<p class="muted game-question-prompt">${escapeHtml(q.prompt)}</p><div class="game-options">${q.choices.map((v,i)=>`<button class="game-option ${gameState.type==="guess_surah"||gameState.type==="guess_juz"||gameState.type==="ayah_gap"?"game-option-text":""}" data-answer="${i}"><span class="game-option-letter">${String.fromCharCode(65+i)}</span><span class="game-option-content">${escapeHtml(v)}</span></button>`).join("")}</div></article>`;
+    const choices=gameState.type==="ayah_gap"
+      ? q.choices.map((v,i)=>`<button class="game-option game-option-text" data-answer="${i}"><span class="game-option-letter">${String.fromCharCode(65+i)}</span><span class="game-option-content" lang="ar" dir="rtl">${escapeHtml(v)}</span></button>`).join("")
+      : q.choices.map((v,i)=>`<button class="game-option ${gameState.type==="guess_surah"||gameState.type==="guess_juz"?"game-option-text":""}" data-answer="${i}"><span class="game-option-letter">${String.fromCharCode(65+i)}</span><span class="game-option-content">${escapeHtml(v)}</span></button>`).join("");
+    stage.innerHTML=`<article class="panel game-question ${gameState.type==="ayah_gap"?"gap-quiz":""}"><div class="game-progress"><span>Soal ${gameState.index+1} dari ${total}</span><span>${Math.round(gameState.index/total*100)}%</span></div><div class="game-progress-track"><i style="width:${gameState.index/total*100}%"></i></div><p class="eyebrow">${label}</p>${questionBody}<p class="muted game-question-prompt">${escapeHtml(q.prompt)}</p><div class="game-options">${choices}</div></article>`;
   }
   async function chooseGameAnswer(index){
     if(gameState.busy)return; gameState.busy=true;
