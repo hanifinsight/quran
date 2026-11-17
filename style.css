@@ -198,3 +198,16 @@ body.guest-mode footer{margin-top:44px}
 .learning-verse .learning-arabic{margin:12px 0;padding:18px 10px;font-size:clamp(26px,3.2vw,36px)}
 .learning-audio-button{min-height:34px;padding:7px 12px;font-size:12px}
 .game-option.game-option-text{font-family:"Traditional Arabic","Noto Naskh Arabic",serif;font-size:clamp(20px,2.4vw,27px);line-height:1.9;text-align:right;direction:rtl;min-height:70px;padding:14px 18px;white-space:normal}
+
+
+/* Halaman mushaf untuk mode belajar */
+.learning-quran-page{background:#fffdf6;border:1px solid #d8c9a4;border-radius:8px;padding:clamp(18px,3vw,34px);margin:18px auto;max-width:900px;box-shadow:0 5px 18px rgba(74,57,24,.08)}
+.learning-page-heading,.learning-page-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;color:#8b7545;font-size:12px;border-bottom:1px solid #e8dec8;padding-bottom:12px}
+.learning-page-heading span{font-family:"Traditional Arabic","Noto Naskh Arabic",serif;font-size:20px}
+.learning-page-text{direction:rtl;text-align:justify;text-align-last:center;font-family:"Traditional Arabic","Noto Naskh Arabic",serif;font-size:clamp(27px,3.5vw,39px);line-height:2.25;color:#202b25;padding:24px 4px;word-spacing:5px}
+.learning-page-ayah{display:inline}
+.learning-ayah-number{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;font-family:serif;font-size:.52em;color:#8a7141;border:1px solid #b9a477;border-radius:50%;width:1.8em;height:1.8em;margin:0 .18em}
+.learning-page-footer{border-top:1px solid #e8dec8;border-bottom:0;padding:12px 0 0}
+.learning-page-audio{max-width:900px;margin:16px auto;padding:16px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.learning-page-audio p{margin:5px 0 0;font-size:12px}
+@media(max-width:640px){.learning-quran-page{padding:16px 12px}.learning-page-text{line-height:2.1;word-spacing:2px}.learning-page-audio{align-items:stretch;flex-direction:column}.learning-page-audio button{width:100%}}
