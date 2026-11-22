@@ -2,97 +2,43 @@
 <html lang="id">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#123d32">
-  <meta name="description" content="Murojaah Quest — teman perjalanan menjaga hafalan Al-Qur'an.">
-  <title>Murojaah Quest</title>
-  <link rel="manifest" href="./manifest.json">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#14532d">
+  <meta name="description" content="Amal Yaumi — catat dan evaluasi amalan harian dengan mudah.">
+  <title>Amal Yaumi</title>
   <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=20261118a">
+  <link rel="stylesheet" href="./style.css?v=20261122a">
 </head>
 <body>
-  <aside class="sidebar" id="sidebar">
-    <a class="brand" href="#">
-      <span class="brand-mark">م</span>
-      <span><strong>Murojaah</strong><small>QUEST</small></span>
-    </a>
-    <nav class="nav">
-      <a class="nav-link active" href="#dashboard" data-page="dashboard">⌂ <span>Dashboard</span></a>
-      <a class="nav-link" href="#quran" data-page="quran">▤ <span>Al-Qur'an</span></a>
-      <a class="nav-link" href="#hafalan" data-page="hafalan">✧ <span>Hafalan Saya</span></a>
-      <a class="nav-link" href="#murojaah" data-page="murojaah">↻ <span>Jadwal Murojaah</span></a>
-      <a class="nav-link" href="#games" data-page="games">♧ <span>Permainan</span></a>
-      <a class="nav-link" href="#pencapaian" data-page="pencapaian">☆ <span>Pencapaian</span></a>
-    </nav>
-    <div class="sidebar-bottom">
-      <div class="mini-note"><strong>Jaga hafalan,</strong><br>sedikit demi sedikit.</div>
-      <button class="profile-button" id="profileButton"><span class="avatar">U</span><span><b>Pengguna</b><small>Mode demo</small></span><span class="dots">···</span></button>
+  <div id="app">
+    <header class="topbar"><a class="brand" href="#"><span class="brand-mark">ع</span><span><b>Amal Yaumi</b><small>Jaga amal, istiqamah setiap hari</small></span></a><button id="mobileMenu" class="icon-button" aria-label="Menu">☰</button><div class="top-user" id="topUser"></div></header>
+    <div class="layout">
+      <aside class="sidebar" id="sidebar">
+        <nav id="nav" class="nav">
+          <button data-page="dashboard" class="nav-item active">▦ <span>Dashboard</span></button>
+          <button data-page="amal" class="nav-item">✓ <span>Isi Amal Yaumi</span></button>
+          <button data-page="recap" class="nav-item">▤ <span>Rekap Individu</span></button>
+          <button data-page="kajian" class="nav-item">▶ <span>Pusat Kajian</span></button>
+          <button data-page="donasi" class="nav-item">♡ <span>Donasi & Kajian Pro</span></button>
+          <button data-page="admin" class="nav-item admin-only" hidden>⚙ <span>Panel Admin</span></button>
+        </nav>
+        <div class="sidebar-bottom"><div class="sidebar-note">Sedikit tetapi konsisten.<br><b>Semoga Allah menerima amal kita.</b></div><button id="logout" class="logout" hidden>Keluar akun</button></div>
+      </aside>
+      <main id="main" class="main"><section class="loading">Memuat aplikasi...</section></main>
     </div>
-  </aside>
-
-  <main class="main">
-    <header class="topbar">
-      <button class="menu-button" id="menuButton" aria-label="Buka menu">☰</button>
-      <a class="public-brand" href="#dashboard" data-page="dashboard"><span class="public-brand-mark">م</span><span><strong>Murojaah Quest</strong><small>Teman perjalanan menjaga hafalan</small></span></a>
-      <nav class="public-nav" aria-label="Navigasi publik"><button type="button" class="public-nav-link" id="publicQuran">Al-Qur’an</button></nav>
-      <div class="top-actions"><span class="streak">🔥 <b>0</b> hari</span><span class="xp">✦ <b>0 XP</b></span><button type="button" class="primary-button top-login" id="topLogin">Masuk</button><button type="button" class="secondary-button top-logout" id="topLogout" hidden>Keluar</button><button type="button" class="avatar small" id="topAvatar" aria-label="Akun" hidden>U</button></div>
-    </header>
-
-    <section class="page active-page" id="dashboard">
-      <div class="welcome">
-        <div><p class="eyebrow">ASSALAMU'ALAIKUM 👋</p><h1>Perjalanan hafalan dimulai di sini.</h1><p class="muted">Bangun kebiasaan murojaah yang konsisten, satu ayat setiap langkah.</p></div>
-        <div class="welcome-art" aria-hidden="true">۞</div>
-      </div>
-      <div class="stats-grid">
-        <article class="stat-card"><span class="stat-icon green">▤</span><div><small>Surah dihafal</small><strong id="statSurah">0</strong><small class="muted">Surah tercatat</small></div></article>
-        <article class="stat-card"><span class="stat-icon gold">✧</span><div><small>Ayat dikuasai</small><strong id="statAyah">0</strong><small class="muted">Ayat hafalan</small></div></article>
-        <article class="stat-card"><span class="stat-icon blue">↻</span><div><small>Perlu murojaah</small><strong id="statReview">0</strong><small class="muted">Target berikutnya</small></div></article>
-        <article class="stat-card"><span class="stat-icon purple">☆</span><div><small>Total XP</small><strong id="statXp">0</strong><small class="muted">Terus bertumbuh</small></div></article>
-      </div>
-      <div class="content-grid">
-        <article class="panel today-panel">
-          <div class="panel-heading"><div><p class="eyebrow">MULAI HARI INI</p><h2>Target murojaah</h2></div><span class="pill">Hari ini</span></div>
-          <div class="empty-state"><div class="empty-icon">۞</div><h3>Belum ada target hari ini</h3><p>Tambahkan hafalan dan atur jadwal murojaah pertamamu.</p><button class="primary-button" data-go="hafalan">+ Tambah hafalan</button></div>
-        </article>
-        <article class="panel progress-panel">
-          <p class="eyebrow">PERJALANANMU</p><h2>Progres hafalan</h2>
-          <div class="progress-ring"><div><strong>0%</strong><small>tercatat</small></div></div>
-          <p class="muted center">Mulai catat hafalan untuk melihat progresmu.</p>
-          <div class="legend"><span><i></i> Ayat tercatat</span><b>0 / 6.236</b></div>
-        </article>
-      </div>
-      <article class="panel quick-panel"><div><p class="eyebrow">PILIH AKTIVITAS</p><h2>Mau mulai dari mana?</h2></div><div class="quick-actions"><button data-go="quran"><span>▤</span><b>Baca Al-Qur'an</b><small>Jelajahi 114 surah</small></button><button data-go="hafalan"><span>✧</span><b>Catat hafalan</b><small>Kelola ayat hafalan</small></button><button data-go="games"><span>♧</span><b>Main kuis</b><small>Belajar sambil bermain</small></button></div></article>
-    </section>
-
-    <section class="page" id="quran"><div class="section-head"><div><p class="eyebrow">AL-QUR'AN</p><h1>Daftar Surah</h1><p class="muted">Pilih surah untuk melihat ayat dan memulai hafalan.</p></div></div><div class="search-row"><input id="surahSearch" type="search" placeholder="Cari nama surah..."><span id="surahCount" class="muted">Memuat data...</span></div><div id="surahList" class="surah-list"><div class="loading">Menyiapkan daftar surah...</div></div></section>
-    <section class="page" id="hafalan"><div class="section-head"><div><p class="eyebrow">MANAJEMEN HAFALAN</p><h1>Hafalan Saya</h1><p class="muted">Catat surah dan rentang ayat yang sedang kamu hafalkan.</p></div></div><div class="panel"><div class="empty-state"><div class="empty-icon">✧</div><h3>Ruang hafalanmu</h3><p>Fitur pencatatan hafalan akan dihubungkan setelah login dan profil Supabase disiapkan.</p></div></div></section>
-    <section class="page" id="murojaah"><div class="section-head"><div><p class="eyebrow">JAGA INGATAN</p><h1>Jadwal Murojaah</h1><p class="muted">Atur pengulangan agar hafalan tetap terjaga.</p></div></div><div class="panel empty-state"><div class="empty-icon">↻</div><h3>Jadwal murojaah akan muncul di sini</h3><p>Setelah hafalan dicatat, kita akan membangun jadwal pengulangan.</p></div></section>
-    <section class="page" id="games"><div class="section-head"><div><p class="eyebrow">BELAJAR DENGAN SERU</p><h1>Permainan Hafalan</h1><p class="muted">Latih ingatan melalui tantangan singkat.</p></div></div><div id="gameRoot"></div></section>
-    <section class="page" id="pencapaian"><div class="section-head"><div><p class="eyebrow">APRESIASI PROSES</p><h1>Pencapaian</h1><p class="muted">XP, level, streak, dan badge akan mengikuti konsistensimu.</p></div></div><div class="panel empty-state"><div class="empty-icon">☆</div><h3>Setiap langkah berarti</h3><p>Pencapaian pertamamu akan tercatat setelah aktivitas hafalan tersedia.</p></div></section>
-    <footer>© 2026 Murojaah Quest · Dibuat untuk menemani perjalanan menjaga hafalan.</footer>
-  </main>
-
-  <div class="auth-overlay" id="authOverlay" hidden>
-    <section class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-      <button class="auth-close" id="authClose" aria-label="Tutup">×</button>
-      <p class="eyebrow">MUROJAAH QUEST</p>
-      <h2 id="authTitle">Masuk ke akun</h2>
-      <p class="muted" id="authDescription">Masuk untuk menyimpan hafalan dan progres pribadi.</p>
-      <form id="authForm">
-        <label id="nameField" hidden>Nama tampilan<input id="authName" type="text" autocomplete="name" placeholder="Nama Anda"></label>
-        <label>Email<input id="authEmail" type="email" autocomplete="email" required placeholder="nama@email.com"></label>
-        <label>Password<input id="authPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="Minimal 6 karakter"></label>
-        <button class="primary-button auth-submit" id="authSubmit" type="submit">Masuk</button>
-      </form>
-      <p class="auth-message" id="authMessage" aria-live="polite"></p>
-      <button class="auth-switch" id="authSwitch" type="button">Belum punya akun? Daftar</button>
-      <button class="auth-switch" id="forgotPassword" type="button">Lupa password?</button>
-      <button class="auth-logout" id="authLogout" type="button" hidden>Keluar dari akun</button>
-    </section>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="authScreen" class="auth-screen" hidden>
+    <div class="auth-card">
+      <div class="brand auth-brand"><span class="brand-mark">ع</span><span><b>Amal Yaumi</b><small>Jaga amal, istiqamah setiap hari</small></span></div>
+      <h1 id="authTitle">Selamat datang</h1><p class="muted" id="authDescription">Masuk untuk mencatat amal harian Anda.</p>
+      <form id="authForm"><label>Email<input id="email" type="email" autocomplete="username" required placeholder="nama@email.com"></label><label>Kata sandi<input id="password" type="password" autocomplete="current-password" minlength="6" required placeholder="Minimal 6 karakter"></label><label id="nameField" hidden>Nama lengkap<input id="displayName" type="text" autocomplete="name" placeholder="Nama Anda"></label><button class="primary full" id="authSubmit">Masuk</button></form>
+      <div class="auth-actions"><button id="toggleAuth" class="link-button">Belum punya akun? Daftar</button><button id="forgotPassword" class="link-button">Lupa kata sandi?</button></div>
+      <p class="tiny muted">Akses akun hanya untuk anggota komunitas.</p>
+    </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20261118a"></script>
-  <script src="./app.js?v=20261118a"></script>
-  <script>if ("serviceWorker" in navigator) { navigator.serviceWorker.getRegistrations().then(registrations => registrations.forEach(registration => registration.unregister())); if ("caches" in window) caches.keys().then(keys => keys.forEach(key => caches.delete(key))); }</script>
+  <script src="./config.js?v=20261122a"></script>
+  <script src="./app.js?v=20261122a"></script>
 </body>
 </html>
